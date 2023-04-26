@@ -1463,7 +1463,7 @@ bool wsrep_check_mode_after_open_table (THD *thd,
     per statement.
     Note: kick-start will take-care of creating isolation key for all tables
     involved in the list (provided all of them are MYISAM or Aria tables). */
-    if (!is_stat_table(&tables->db, &tables->alias))
+    if (!is_stat_table(tables->db, tables->alias))
     {
       if (tbl->s->primary_key == MAX_KEY &&
           wsrep_check_mode(WSREP_MODE_REQUIRED_PRIMARY_KEY))
@@ -2404,7 +2404,7 @@ static int wsrep_drop_table_query(THD* thd, uchar** buf, size_t* buf_len)
   bool found_temp_table= false;
   for (TABLE_LIST* table= first_table; table; table= table->next_global)
   {
-    if (thd->find_temporary_table(table->db.str, table->table_name.str))
+    if (thd->find_temporary_table(table->db, table->table_name))
     {
       found_temp_table= true;
       break;
@@ -2419,7 +2419,7 @@ static int wsrep_drop_table_query(THD* thd, uchar** buf, size_t* buf_len)
 
     for (TABLE_LIST* table= first_table; table; table= table->next_global)
     {
-      if (!thd->find_temporary_table(table->db.str, table->table_name.str))
+      if (!thd->find_temporary_table(table->db, table->table_name))
       {
         append_identifier(thd, &buff, table->db.str, table->db.length);
         buff.append('.');
@@ -2616,7 +2616,8 @@ bool wsrep_can_run_in_toi(THD *thd, const char *db, const char *table,
     }
     /* fallthrough */
   default:
-    if (table && !thd->find_temporary_table(db, table))
+    if (table && !thd->find_temporary_table(Lex_ident_db(Lex_cstring_strlen(db)),
+                                            Lex_cstring_strlen(table)))
     {
       return true;
     }
@@ -2625,7 +2626,7 @@ bool wsrep_can_run_in_toi(THD *thd, const char *db, const char *table,
     {
       for (const TABLE_LIST* table= first_table; table; table= table->next_global)
       {
-        if (!thd->find_temporary_table(table->db.str, table->table_name.str))
+        if (!thd->find_temporary_table(table->db, table->table_name))
         {
           return true;
         }

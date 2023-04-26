@@ -48,6 +48,7 @@ Created 1/8/1996 Heikki Tuuri
 #include "fil0fil.h"
 #include "fil0crypt.h"
 #include "mysql_com.h"
+#include "lex_ident.h"
 #include <sql_const.h>
 #include <set>
 #include <algorithm>
@@ -357,8 +358,8 @@ dict_mem_table_col_rename(
 /*======================*/
 	dict_table_t*	table,	/*!< in/out: table */
 	ulint		nth_col,/*!< in: column index */
-	const char*	from,	/*!< in: old column name */
-	const char*	to,	/*!< in: new column name */
+	const LEX_CSTRING &from,/*!< in: old column name */
+	const LEX_CSTRING &to,	/*!< in: new column name */
 	bool		is_virtual);
 				/*!< in: if this is a virtual column */
 /**********************************************************************//**
@@ -949,7 +950,8 @@ struct zip_pad_info_t {
 
 /** "GEN_CLUST_INDEX" is the name reserved for InnoDB default
 system clustered index when there is no primary key. */
-const char innobase_index_reserve_name[] = "GEN_CLUST_INDEX";
+static const
+Lex_cstring innobase_index_reserve_name_ls = "GEN_CLUST_INDEX"_LEX_CSTRING;
 
 /** Data structure for an index.  Most fields will be
 initialized to 0, NULL or FALSE in dict_mem_index_create(). */
@@ -1593,11 +1595,12 @@ struct dict_foreign_matches_id {
 
 	bool operator()(const dict_foreign_t*	foreign) const
 	{
-		if (0 == innobase_strcasecmp(foreign->id, m_id)) {
+		const Lex_ident_column ident = Lex_cstring_strlen(m_id);
+		if (ident.streq(Lex_cstring_strlen(foreign->id))) {
 			return(true);
 		}
 		if (const char* pos = strchr(foreign->id, '/')) {
-			if (0 == innobase_strcasecmp(m_id, pos + 1)) {
+			if (ident.streq(Lex_cstring_strlen(pos + 1))) {
 				return(true);
 			}
 		}

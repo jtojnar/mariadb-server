@@ -402,7 +402,9 @@ dict_table_schema_check(
 
 	for (unsigned i = 0; i < req_schema->n_cols; i++) {
 		ulint	j = dict_table_has_column(
-			table, req_schema->columns[i].name, i);
+			table,
+			Lex_cstring_strlen(req_schema->columns[i].name),
+			i);
 
 		if (j == table->n_def) {
 			snprintf(errstr, errstr_sz,

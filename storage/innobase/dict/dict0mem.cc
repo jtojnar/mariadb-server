@@ -694,8 +694,8 @@ dict_mem_table_col_rename(
 /*======================*/
 	dict_table_t*	table,	/*!< in/out: table */
 	ulint		nth_col,/*!< in: column index */
-	const char*	from,	/*!< in: old column name */
-	const char*	to,	/*!< in: new column name */
+	const LEX_CSTRING &from,/*!< in: old column name */
+	const LEX_CSTRING &to,	/*!< in: new column name */
 	bool		is_virtual)
 				/*!< in: if this is a virtual column */
 {
@@ -710,10 +710,10 @@ dict_mem_table_col_rename(
 		s += len + 1;
 	}
 
-	ut_ad(!my_strcasecmp(system_charset_info, from, s));
+	ut_ad(Lex_ident_column(from).streq(Lex_cstring_strlen(s)));
 
 	dict_mem_table_col_rename_low(table, static_cast<unsigned>(nth_col),
-				      to, s, is_virtual);
+				      to.str, s, is_virtual);
 }
 
 /**********************************************************************//**

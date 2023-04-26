@@ -1955,14 +1955,16 @@ fts_create_common_tables(
 	}
 
 	if (table->versioned()) {
-		index = dict_mem_index_create(table, FTS_DOC_ID_INDEX_NAME,
+		index = dict_mem_index_create(table,
+					      FTS_DOC_ID_INDEX_NAME_ls.str,
 					      DICT_UNIQUE, 2);
-		dict_mem_index_add_field(index, FTS_DOC_ID_COL_NAME, 0);
+		dict_mem_index_add_field(index, FTS_DOC_ID_COL_NAME_ls.str, 0);
 		dict_mem_index_add_field(index, table->cols[table->vers_end].name(*table), 0);
 	} else {
-		index = dict_mem_index_create(table, FTS_DOC_ID_INDEX_NAME,
+		index = dict_mem_index_create(table,
+					      FTS_DOC_ID_INDEX_NAME_ls.str,
 					      DICT_UNIQUE, 1);
-		dict_mem_index_add_field(index, FTS_DOC_ID_COL_NAME, 0);
+		dict_mem_index_add_field(index, FTS_DOC_ID_COL_NAME_ls.str, 0);
 	}
 
 	error =	row_create_index_for_mysql(index, trx, NULL,
@@ -3615,7 +3617,8 @@ fts_get_max_doc_id(
 	dfield = dict_index_get_nth_field(index, 0);
 
 #if 0 /* This can fail when renaming a column to FTS_DOC_ID_COL_NAME. */
-	ut_ad(innobase_strcasecmp(FTS_DOC_ID_COL_NAME, dfield->name) == 0);
+	ut_ad(Lex_ident_column(Lex_cstring_strlen(dfield->name)).
+		streq(FTS_DOC_ID_COL_NAME_ls));
 #endif
 
 	mtr.start();
@@ -3731,7 +3734,8 @@ fts_doc_fetch_by_doc_id(
 					"  END IF;\n"
 					"END LOOP;\n"
 					"CLOSE c;",
-					select_str, FTS_DOC_ID_COL_NAME));
+					select_str,
+					FTS_DOC_ID_COL_NAME_ls.str));
 		} else {
 			ut_ad(option == FTS_FETCH_DOC_BY_ID_LARGE);
 
@@ -3767,8 +3771,9 @@ fts_doc_fetch_by_doc_id(
 					"  END IF;\n"
 					"END LOOP;\n"
 					"CLOSE c;",
-					FTS_DOC_ID_COL_NAME,
-					select_str, FTS_DOC_ID_COL_NAME));
+					FTS_DOC_ID_COL_NAME_ls.str,
+					select_str,
+					FTS_DOC_ID_COL_NAME_ls.str));
 		}
 		if (get_doc) {
 			get_doc->get_document_graph = graph;
@@ -5214,7 +5219,7 @@ fts_add_doc_id_column(
 {
 	dict_mem_table_add_col(
 		table, heap,
-		FTS_DOC_ID_COL_NAME,
+		FTS_DOC_ID_COL_NAME_ls.str,
 		DATA_INT,
 		dtype_form_prtype(
 			DATA_NOT_NULL | DATA_UNSIGNED

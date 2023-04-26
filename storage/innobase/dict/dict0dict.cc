@@ -284,27 +284,26 @@ otherwise table->n_def */
 ulint
 dict_table_has_column(
 	const dict_table_t*	table,
-	const char*		col_name,
+	const LEX_CSTRING	&col_name,
 	ulint			col_nr)
 {
 	ulint		col_max = table->n_def;
 
 	ut_ad(table);
-	ut_ad(col_name);
+	ut_ad(col_name.str);
 	ut_ad(table->magic_n == DICT_TABLE_MAGIC_N);
 
 	if (col_nr < col_max
-	    && innobase_strcasecmp(
-		col_name, dict_table_get_col_name(table, col_nr)) == 0) {
+	    && Lex_ident_column(col_name).
+	         streq(dict_table_get_col_name_ls(table, col_nr))) {
 		return(col_nr);
 	}
 
 	/** The order of column may changed, check it with other columns */
 	for (ulint i = 0; i < col_max; i++) {
 		if (i != col_nr
-		    && innobase_strcasecmp(
-			col_name, dict_table_get_col_name(table, i)) == 0) {
-
+		    && Lex_ident_column(col_name).
+		         streq(dict_table_get_col_name_ls(table, i))) {
 			return(i);
 		}
 	}
@@ -1928,16 +1927,18 @@ TRUE.
 ibool
 dict_col_name_is_reserved(
 /*======================*/
-	const char*	name)	/*!< in: column name */
+	const LEX_CSTRING &name)	/*!< in: column name */
 {
-	static const char*	reserved_names[] = {
-		"DB_ROW_ID", "DB_TRX_ID", "DB_ROLL_PTR"
+	static Lex_ident_column reserved_names[] = {
+		"DB_ROW_ID"_Lex_ident_column,
+		"DB_TRX_ID"_Lex_ident_column,
+		"DB_ROLL_PTR"_Lex_ident_column
 	};
 
 	compile_time_assert(UT_ARR_SIZE(reserved_names) == DATA_N_SYS_COLS);
 
 	for (ulint i = 0; i < UT_ARR_SIZE(reserved_names); i++) {
-		if (innobase_strcasecmp(name, reserved_names[i]) == 0) {
+		if (reserved_names[i].streq(name)) {
 
 			return(TRUE);
 		}
@@ -2171,10 +2172,11 @@ dict_index_find_cols(
 	for (ulint i = 0; i < index->n_fields; i++) {
 		ulint		j;
 		dict_field_t*	field = dict_index_get_nth_field(index, i);
+		const Lex_ident_column field_name = Lex_cstring_strlen(field->name);
 
 		for (j = 0; j < table->n_cols; j++) {
-			if (!innobase_strcasecmp(dict_table_get_col_name(table, j),
-				    field->name)) {
+			if (field_name.
+				streq(dict_table_get_col_name_ls(table, j))) {
 
 				/* Check if same column is being assigned again
 				which suggest that column has duplicate name. */
@@ -4610,12 +4612,10 @@ dict_foreign_qualify_index(
 	}
 
 	for (ulint i = 0; i < n_cols; i++) {
-		dict_field_t*	field;
-		const char*	col_name;
-		ulint		col_no;
-
-		field = dict_index_get_nth_field(index, i);
-		col_no = dict_col_get_no(field->col);
+		const dict_field_t * const field(dict_index_get_nth_field(index, i));
+		const Lex_ident_column field_name= Lex_cstring_strlen(field->name);
+		const ulint col_no = dict_col_get_no(field->col);
+		Lex_ident_column col_name;
 
 		if (field->prefix_len != 0) {
 			/* We do not accept column prefix
@@ -4639,20 +4639,20 @@ dict_foreign_qualify_index(
 		}
 
 		if (field->col->is_virtual()) {
-			col_name = "";
+			col_name = ""_Lex_ident_column;
 			for (ulint j = 0; j < table->n_v_def; j++) {
-				col_name = dict_table_get_v_col_name(table, j);
-				if (innobase_strcasecmp(field->name,col_name) == 0) {
+				col_name = dict_table_get_v_col_name_ls(table, j);
+				if (field_name.streq(col_name)) {
 					break;
 				}
 			}
 		} else {
 			col_name = col_names
-				? col_names[col_no]
-				: dict_table_get_col_name(table, col_no);
+				? Lex_ident_column(Lex_cstring_strlen(col_names[col_no]))
+				: dict_table_get_col_name_ls(table, col_no);
 		}
 
-		if (0 != innobase_strcasecmp(columns[i], col_name)) {
+		if (!col_name.streq(Lex_cstring_strlen(columns[i]))) {
 			return(false);
 		}
 

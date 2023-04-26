@@ -309,7 +309,7 @@ TRUE.
 ibool
 dict_col_name_is_reserved(
 /*======================*/
-	const char*	name)	/*!< in: column name */
+	const LEX_CSTRING &name)	/*!< in: column name */
 	MY_ATTRIBUTE((nonnull, warn_unused_result));
 /** Unconditionally set the AUTO_INCREMENT counter.
 @param[in,out]	table	table or partition
@@ -526,6 +526,14 @@ dict_table_get_v_col_name(
 	const dict_table_t*	table,
 	ulint			col_nr);
 
+static inline
+Lex_ident_column dict_table_get_v_col_name_ls(
+	const dict_table_t*	table,
+	ulint			col_nr)
+{
+  return Lex_cstring_strlen(dict_table_get_v_col_name(table, col_nr));
+}
+
 /** Check if the table has a given column.
 @param[in]	table		table object
 @param[in]	col_name	column name
@@ -535,7 +543,7 @@ otherwise table->n_def */
 ulint
 dict_table_has_column(
 	const dict_table_t*	table,
-	const char*		col_name,
+	const LEX_CSTRING	&col_name,
 	ulint			col_nr = 0);
 
 /**********************************************************************//**
@@ -769,6 +777,13 @@ dict_table_get_col_name(const dict_table_t* table, ulint col_nr)
 {
 	return(dict_table_get_nth_col(table, col_nr)->name(*table));
 }
+
+inline
+Lex_ident_column dict_table_get_col_name_ls(const dict_table_t* table, ulint col_nr)
+{
+  return Lex_cstring_strlen(dict_table_get_col_name(table, col_nr));
+}
+
 
 /********************************************************************//**
 Gets the given system column number of a table.
