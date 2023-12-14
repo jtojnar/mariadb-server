@@ -4587,17 +4587,19 @@ bool Item_func_group_concat::setup(THD *thd)
   }
 
   if (distinct)
+  {
     unique_filter= get_unique(get_comparator_function_for_distinct(allow_packing),
                              (void*)this,
                              tree_key_length + get_null_bytes(),
                              ram_limitation(thd), 0, allow_packing,
                              non_const_items);
 
-  if (!unique_filter ||
-      (unique_filter->get_keys_descriptor()->setup_for_item(thd, this,
-                                                       non_const_items,
-                                                       arg_count_field)))
-    DBUG_RETURN(TRUE);
+    if (!unique_filter ||
+        (unique_filter->get_keys_descriptor()->setup_for_item(thd, this,
+                                                         non_const_items,
+                                                         arg_count_field)))
+      DBUG_RETURN(TRUE);
+  }
 
   if ((row_limit && row_limit->cmp_type() != INT_RESULT) ||
       (offset_limit && offset_limit->cmp_type() != INT_RESULT))
