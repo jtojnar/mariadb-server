@@ -7001,7 +7001,8 @@ struct SORT_FIELD_ATTR
   void set_length_and_original_length(THD *thd, uint length_arg);
   void setup_key_part_for_variable_size_key(Field *fld);
   void setup_key_part_for_fixed_size_key(Field *fld);
-  int compare_nullability(uchar *a, uchar *b);
+
+  inline static int compare_null_flag(bool a_is_null, bool b_is_null);
 };
 
 

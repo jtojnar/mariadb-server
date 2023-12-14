@@ -16,6 +16,8 @@
 #ifndef UNIQUE_INCLUDED
 #define UNIQUE_INCLUDED
 
+#include "mariadb.h"
+#include "sql_string.h"
 #include "filesort.h"
 
 

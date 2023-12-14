@@ -2954,33 +2954,25 @@ qsort2_cmp get_packed_keys_compare_ptr()
 
 /*
   @brief
-    Compare null-ability of 2 keys
-
+    "sort" two rows based on it's null byte flag value.
+    Nulls come after non-nulls.
   @param
-    a              key to be compared
-    b              key to be compared
+    a_is_null      null_byte for key a to be compared
+    b_is_null      null_byte for key b to be compared
 
   @retval
-    -1     key a is NULL
-    1      key b is NULL
-    0      either key a and key b are both NULL or
-           both are NOT NULL
+    -1     key a is first
+    1      key b is second
+    0      either key a and key b are both NULL or both are NOT NULL
 */
 
-int SORT_FIELD_ATTR::compare_nullability(uchar *a, uchar *b)
+inline int SORT_FIELD_ATTR::compare_null_flag(bool a_is_null, bool b_is_null)
 {
-  if (*a != *b)
-  {
-    if (*a == 0)
-      return -1;
-    return 1;
-  }
-  else
-  {
-    if (*a == 0)
-      return 0;
-  }
-  return 0;
+  if (a_is_null == b_is_null)
+    return 0;
+  if (!a_is_null)
+    return -1;
+  return 1;
 }
 
 
@@ -3004,7 +2996,7 @@ int SORT_FIELD_ATTR::compare_packed_varstrings(uchar *a, size_t *a_len,
     *a_len= *b_len= 1; // NULL bytes are always stored
     int cmp_val;
 
-    if ((cmp_val= compare_nullability(a, b)) || *a == 0)
+    if ((cmp_val= compare_null_flag(*a, *b)) || *a == 0)
       return cmp_val;
     a++;
     b++;
@@ -3066,7 +3058,7 @@ SORT_FIELD_ATTR::compare_packed_varstrings(uchar *a, uchar *b)
   if (maybe_null)
   {
     int cmp_val;
-    if ((cmp_val= compare_nullability(a, b)) || *a == 0)
+    if ((cmp_val= compare_null_flag(*a, *b)) || *a == 0)
       return cmp_val;
 
     a++;
@@ -3097,7 +3089,7 @@ int SORT_FIELD_ATTR::compare_packed_fixed_size_vals(uchar *a, size_t *a_len,
     *a_len=1;
     *b_len=1;
     int cmp_val;
-    if ((cmp_val= compare_nullability(a, b)) || *a == 0)
+    if ((cmp_val= compare_null_flag(*a, *b)) || *a == 0)
       return cmp_val;
 
     a++;
@@ -3144,7 +3136,7 @@ int SORT_FIELD::compare_fixed_size_vals(uchar *a, size_t *a_len,
     *a_len=1;
     *b_len=1;
     int cmp_val;
-    if ((cmp_val= compare_nullability(a, b)) || *a == 0)
+    if ((cmp_val= compare_null_flag(*a, *b)) || *a == 0)
       return cmp_val;
 
     a++;
