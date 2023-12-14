@@ -76,15 +76,13 @@ Unique_impl::Unique_impl(qsort_cmp2 comp_func, void * comp_func_fixed_arg,
                uint min_dupl_count_arg, Keys_descriptor *desc)
   :max_in_memory_size(max_in_memory_size_arg),
    size(size_arg),
+   full_size(min_dupl_count_arg ? size + sizeof(element_count) : size),
+   min_dupl_count(min_dupl_count_arg),
+   with_counters(MY_TEST(min_dupl_count_arg)),
    memory_used(0),
    elements(0)
 {
   my_b_clear(&file);
-  min_dupl_count= min_dupl_count_arg;
-  full_size= size;
-  if (min_dupl_count_arg)
-    full_size+= sizeof(element_count);
-  with_counters= MY_TEST(min_dupl_count_arg);
   init_tree(&tree, (max_in_memory_size / 16), 0, 0, comp_func,
             NULL, comp_func_fixed_arg, MYF(MY_THREAD_SPECIFIC));
   /* If the following fail's the next add will also fail */
@@ -819,16 +817,15 @@ bool Unique_impl::get(TABLE *table)
   {
     /* Whole tree is in memory;  Don't use disk if you don't need to */
     if ((sort.record_pointers= (uchar*)
-	 my_malloc(key_memory_Filesort_info_record_pointers,
+         my_malloc(key_memory_Filesort_info_record_pointers,
                    size * tree.elements_in_tree, MYF(MY_THREAD_SPECIFIC))))
     {
       uchar *save_record_pointers= sort.record_pointers;
       tree_walk_action action= min_dupl_count ?
-		         (tree_walk_action) unique_intersect_write_to_ptrs :
-		         (tree_walk_action) unique_write_to_ptrs;
+        (tree_walk_action) unique_intersect_write_to_ptrs :
+        (tree_walk_action) unique_write_to_ptrs;
       filtered_out_elems= 0;
-      (void) tree_walk(&tree, action,
-		       this, left_root_right);
+      (void) tree_walk(&tree, action, this, TREE_WALK::left_root_right);
       /* Restore record_pointers that was changed in by 'action' above */
       sort.record_pointers= save_record_pointers;
       sort.return_rows-= filtered_out_elems;

@@ -371,12 +371,13 @@ class Unique_impl : public Unique
   ulong filtered_out_elems;
   uint size;
 
-  uint full_size;   /* Size of element + space needed to store the number of
-                       duplicates found for the element. */
-  uint min_dupl_count;   /* Minimum number of occurrences of element required for
-                            it to be written to record_pointers.
-                            always 0 for unions, > 0 for intersections */
-  bool with_counters;
+  const uint full_size;   /* Size of element + space needed to store the number of
+                             duplicates found for the element. */
+  const uint min_dupl_count; /* Minimum number of occurrences of element
+                                required for it to be written to
+                                record_pointers.
+                                always 0 for unions, > 0 for intersections */
+  const bool with_counters;
 
   // size in bytes used for storing keys in the Unique tree
   size_t memory_used;
@@ -387,7 +388,7 @@ class Unique_impl : public Unique
   bool flush();
 
   // return the amount of unused memory in the Unique tree
-  size_t space_left()
+  size_t space_left() const
   {
     DBUG_ASSERT(max_in_memory_size >= memory_used);
     return max_in_memory_size - memory_used;
