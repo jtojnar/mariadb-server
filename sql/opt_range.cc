@@ -1228,7 +1228,7 @@ SQL_SELECT *make_select(TABLE *head, table_map const_tables,
     */
     select->file= filesort->io_cache;
     select->records=(ha_rows) (select->file.end_of_file/
-			       head->file->ref_length);
+                               head->file->ref_length);
     my_b_clear(&filesort->io_cache);
   }
   DBUG_RETURN(select);
@@ -5292,7 +5292,7 @@ TABLE_READ_PLAN *get_best_disjunct_quick(PARAM *param, SEL_IMERGE *imerge,
 
   /* Add Unique operations cost */
   unique_calc_buff_size=
-    Unique_impl::get_cost_calc_buff_size((ulong)non_cpk_scan_records,
+    Unique::get_cost_calc_buff_size((ulong)non_cpk_scan_records,
                                     param->table->file->ref_length,
                                     (size_t)param->thd->variables.sortbuff_size);
   if (param->imerge_cost_buff_size < unique_calc_buff_size)
@@ -5304,7 +5304,7 @@ TABLE_READ_PLAN *get_best_disjunct_quick(PARAM *param, SEL_IMERGE *imerge,
   }
 
   {
-    const double dup_removal_cost= Unique_impl::get_use_cost(
+    const double dup_removal_cost= Unique::get_use_cost(
                            param->imerge_cost_buff, (uint)non_cpk_scan_records,
                            param->table->file->ref_length,
                            (size_t)param->thd->variables.sortbuff_size,
@@ -5914,7 +5914,7 @@ bool prepare_search_best_index_intersect(PARAM *param,
     return TRUE;
 
   size_t calc_cost_buff_size=
-         Unique_impl::get_cost_calc_buff_size((size_t)records_in_scans,
+         Unique::get_cost_calc_buff_size((size_t)records_in_scans,
                                          common->key_size,
 				         common->max_memory_size);
   if (!(common->buff_elems= (uint *) alloc_root(param->mem_root,
@@ -6263,9 +6263,9 @@ bool check_index_intersect_extension(PARTIAL_INDEX_INTERSECT_INFO *curr,
     */
     ha_rows elems_in_tree= common_info->search_scans[0]->records-
                            common_info->search_scans[0]->filtered_out ;
-    next->in_memory_cost+= Unique_impl::get_search_cost(elems_in_tree,
-                                                   common_info->compare_factor)* 
-                             ext_index_scan_records;
+    next->in_memory_cost+=
+      Unique::get_search_cost(elems_in_tree, common_info->compare_factor) *
+      ext_index_scan_records;
     cost= next->in_memory_cost;
   }
   else
@@ -6276,7 +6276,7 @@ bool check_index_intersect_extension(PARTIAL_INDEX_INTERSECT_INFO *curr,
     size_t max_memory_size= common_info->max_memory_size; 
     
     records_sent_to_unique+= ext_index_scan_records;
-    cost= Unique_impl::get_use_cost(buff_elems, (size_t) records_sent_to_unique, key_size,
+    cost= Unique::get_use_cost(buff_elems, (size_t) records_sent_to_unique, key_size,
                                max_memory_size, compare_factor, TRUE,
                                &next->in_memory);
     if (records_filtered_out_by_cpk)
@@ -6286,7 +6286,7 @@ bool check_index_intersect_extension(PARTIAL_INDEX_INTERSECT_INFO *curr,
       double cost2;
       bool in_memory2;
       ha_rows records2= records_sent_to_unique-records_filtered_out_by_cpk;
-      cost2=  Unique_impl::get_use_cost(buff_elems, (size_t) records2, key_size,
+      cost2=  Unique::get_use_cost(buff_elems, (size_t) records2, key_size,
                                    max_memory_size, compare_factor, TRUE,
                                    &in_memory2);
       cost2+= get_cpk_filter_cost(ext_index_scan_records, common_info->cpk_scan,
@@ -12231,12 +12231,12 @@ int read_keys_and_merge_scans(THD *thd,
                               READ_RECORD *read_record,
                               bool intersection,
                               key_map *filtered_scans,
-                              Unique_impl **unique_ptr)
+                              Unique **unique_ptr)
 {
   List_iterator_fast<QUICK_RANGE_SELECT> cur_quick_it(quick_selects);
   QUICK_RANGE_SELECT* cur_quick;
   int result;
-  Unique_impl *unique= *unique_ptr;
+  Unique *unique= *unique_ptr;
   handler *file= head->file;
   bool with_cpk_filter= pk_quick_select != NULL;
   DBUG_ENTER("read_keys_and_merge");
@@ -12267,10 +12267,10 @@ int read_keys_and_merge_scans(THD *thd,
 
     if (!desc)
       goto err;
-    unique= new Unique_impl(refpos_cmp, (void *)desc,
-                            file->ref_length,
-                            (size_t)thd->variables.sortbuff_size,
-                            intersection ? quick_selects.elements : 0, desc);
+    unique= new Unique(refpos_cmp, desc,
+                       file->ref_length,
+                       (size_t)thd->variables.sortbuff_size,
+                       intersection ? quick_selects.elements : 0, desc);
     if (!unique)
       goto err;
     *unique_ptr= unique;

@@ -40,25 +40,25 @@
 #include "uniques.h"	                        // Unique
 #include "sql_sort.h"
 
-int unique_write_to_file(uchar* key, element_count count, Unique_impl *unique)
+int unique_write_to_file(uchar* key, element_count count, Unique *unique)
 {
   return unique->write_record_to_file(key) ? 1 : 0;
 }
 
-int unique_write_to_file_with_count(uchar* key, element_count count, Unique_impl *unique)
+int unique_write_to_file_with_count(uchar* key, element_count count, Unique *unique)
 {
   return unique_write_to_file(key, count, unique) ||
          my_b_write(&unique->file, (uchar*)&count, sizeof(element_count)) ? 1 : 0;
 }
 
-int unique_write_to_ptrs(uchar* key, element_count count, Unique_impl *unique)
+int unique_write_to_ptrs(uchar* key, element_count count, Unique *unique)
 {
   memcpy(unique->sort.record_pointers, key, unique->size);
   unique->sort.record_pointers+=unique->size;
   return 0;
 }
 
-int unique_intersect_write_to_ptrs(uchar* key, element_count count, Unique_impl *unique)
+int unique_intersect_write_to_ptrs(uchar* key, element_count count, Unique *unique)
 {
   if (count >= unique->min_dupl_count)
   {
@@ -71,7 +71,7 @@ int unique_intersect_write_to_ptrs(uchar* key, element_count count, Unique_impl 
 }
 
 
-Unique_impl::Unique_impl(qsort_cmp2 comp_func, void * comp_func_fixed_arg,
+Unique::Unique(qsort_cmp2 comp_func, void * comp_func_fixed_arg,
 	             uint size_arg, size_t max_in_memory_size_arg,
                uint min_dupl_count_arg, Keys_descriptor *desc)
   :max_in_memory_size(max_in_memory_size_arg),
@@ -305,7 +305,7 @@ static double get_merge_many_buffs_cost(uint *buffer,
       these will be random seeks.
 */
 
-double Unique_impl::get_use_cost(uint *buffer, size_t nkeys, uint key_size,
+double Unique::get_use_cost(uint *buffer, size_t nkeys, uint key_size,
                             size_t max_in_memory_size,
                             double compare_factor,
                             bool intersect_fl, bool *in_memory)
@@ -367,7 +367,7 @@ double Unique_impl::get_use_cost(uint *buffer, size_t nkeys, uint key_size,
   return result;
 }
 
-Unique_impl::~Unique_impl()
+Unique::~Unique()
 {
   close_cached_file(&file);
   delete_tree(&tree, 0);
@@ -377,7 +377,7 @@ Unique_impl::~Unique_impl()
 
 
     /* Write tree to disk; clear tree */
-bool Unique_impl::flush()
+bool Unique::flush()
 {
   Merge_chunk file_ptr;
   elements+= tree.elements_in_tree;
@@ -406,7 +406,7 @@ bool Unique_impl::flush()
 */
 
 void
-Unique_impl::reset()
+Unique::reset()
 {
   reset_tree(&tree);
   /*
@@ -663,7 +663,7 @@ end:
     <> 0 error
  */
 
-bool Unique_impl::walk(TABLE *table, tree_walk_action action, void *walk_action_arg)
+bool Unique::walk(TABLE *table, tree_walk_action action, void *walk_action_arg)
 {
   int res= 0;
   uchar *merge_buffer;
@@ -712,7 +712,7 @@ bool Unique_impl::walk(TABLE *table, tree_walk_action action, void *walk_action_
   TRUE.
 
   SYNOPSIS
-    Unique_impl::merge()
+    Unique::merge()
   All params are 'IN':
     table               the parameter to access sort context
     buff                merge buffer
@@ -723,7 +723,7 @@ bool Unique_impl::walk(TABLE *table, tree_walk_action action, void *walk_action_
     <> 0 error
  */
 
-bool Unique_impl::merge(TABLE *table, uchar *buff, size_t buff_size,
+bool Unique::merge(TABLE *table, uchar *buff, size_t buff_size,
                    bool without_last_merge)
 {
   IO_CACHE *outfile= &sort.io_cache;
@@ -804,12 +804,12 @@ err:
   rows will be read in priority order.
 */
 
-bool Unique_impl::get(TABLE *table)
+bool Unique::get(TABLE *table)
 {
   bool rc= 1;
   uchar *sort_buffer= NULL;
   sort.return_rows= elements+tree.elements_in_tree;
-  DBUG_ENTER("Unique_impl::get");
+  DBUG_ENTER("Unique::get");
 
   DBUG_ASSERT(is_variable_sized() == FALSE);
 
@@ -867,7 +867,7 @@ err:
     =0   Record successfully written
 */
 
-int Unique_impl::write_record_to_file(uchar *key)
+int Unique::write_record_to_file(uchar *key)
 {
   return my_b_write(get_file(), key, keys_descriptor->get_length_of_key(key));
 }

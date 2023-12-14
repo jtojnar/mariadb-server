@@ -336,7 +336,7 @@ bool mysql_delete(THD *thd, TABLE_LIST *table_list, COND *conds,
   bool binlog_is_row;
   Explain_delete *explain;
   Delete_plan query_plan(thd->mem_root);
-  Unique_impl *deltempfile= NULL;
+  Unique *deltempfile= NULL;
   bool delete_record= false;
   bool delete_while_scanning;
   bool portion_of_time_through_update;
@@ -752,9 +752,9 @@ bool mysql_delete(THD *thd, TABLE_LIST *table_list, COND *conds,
     if (!desc)
       goto terminate_delete;  // OOM
 
-    deltempfile= new (thd->mem_root) Unique_impl(refpos_cmp, desc,
-                                                 table->file->ref_length,
-                                                 MEM_STRIP_BUF_SIZE, 0, desc);
+    deltempfile= new (thd->mem_root) Unique(refpos_cmp, desc,
+                                            table->file->ref_length,
+                                            MEM_STRIP_BUF_SIZE, 0, desc);
 
     if (!deltempfile)
       goto terminate_delete;  // OOM
@@ -1227,8 +1227,7 @@ multi_delete::multi_delete(THD *thd_arg, TABLE_LIST *dt, uint num_of_tables_arg)
     num_of_tables(num_of_tables_arg), error(0),
     do_delete(0), transactional_tables(0), normal_tables(0), error_handled(0)
 {
-  tempfiles=
-    (Unique_impl **) thd_arg->calloc(sizeof(Unique_impl *) * num_of_tables);
+  tempfiles= (Unique **) thd_arg->calloc(sizeof(Unique *) * num_of_tables);
 }
 
 
@@ -1256,7 +1255,7 @@ bool
 multi_delete::initialize_tables(JOIN *join)
 {
   TABLE_LIST *walk;
-  Unique_impl **tempfiles_ptr;
+  Unique **tempfiles_ptr;
   DBUG_ENTER("initialize_tables");
 
   if (unlikely((thd->variables.option_bits & OPTION_SAFE_UPDATES) &&
@@ -1326,7 +1325,7 @@ multi_delete::initialize_tables(JOIN *join)
     table_being_deleted= delete_tables;
     walk= walk->next_local;
   }
-  Unique_impl *unique;
+  Unique *unique;
   Keys_descriptor *desc;
   for (;walk ;walk= walk->next_local)
   {
@@ -1335,11 +1334,11 @@ multi_delete::initialize_tables(JOIN *join)
     if (!desc)
       DBUG_RETURN(TRUE); // OOM
 
-    unique= new (thd->mem_root) Unique_impl(refpos_cmp,
-                                            desc,
-                                            table->file->ref_length,
-                                            MEM_STRIP_BUF_SIZE,
-                                            0, desc);
+    unique= new (thd->mem_root) Unique(refpos_cmp,
+                                       desc,
+                                       table->file->ref_length,
+                                       MEM_STRIP_BUF_SIZE,
+                                       0, desc);
     if (!unique)
       DBUG_RETURN(TRUE);  // OOM
     *tempfiles_ptr++= unique;

@@ -315,50 +315,13 @@ public:
 
 
 /*
-   Unique -- An abstract class for unique (removing duplicates).
-*/
-
-class Unique : public Sql_alloc
-{
-
-protected:
-  /*
-    Storing all meta-data information of the expressions whose value are
-    being added to the Unique tree
-  */
-  Keys_descriptor *keys_descriptor;
-public:
-
-  virtual void reset() = 0;
-  virtual bool unique_add(void *ptr) = 0;
-  virtual ~Unique() {};
-
-  virtual void close_for_expansion() = 0;
-
-  virtual bool get(TABLE *table) = 0;
-  virtual bool walk(TABLE *table, tree_walk_action action,
-                    void *walk_action_arg)= 0;
-
-  virtual SORT_INFO *get_sort() = 0;
-
-  virtual ulong get_n_elements() = 0;
-  virtual size_t get_max_in_memory_size() const = 0;
-  virtual bool is_in_memory() = 0;
-
-  virtual ulong elements_in_tree() = 0;
-  Keys_descriptor *get_keys_descriptor() { return keys_descriptor; }
-};
-
-
-/*
-   Unique_impl -- class for unique (removing of duplicates).
+   Unique -- class for unique (removing of duplicates).
    Puts all values to the TREE. If the tree becomes too big,
    it's dumped to the file. User can request sorted values, or
    just iterate through them. In the last case tree merging is performed in
    memory simultaneously with iteration, so it should be ~2-3x faster.
 */
-
-class Unique_impl : public Unique
+class Unique : public Sql_alloc
 {
   DYNAMIC_ARRAY file_ptrs;
   /* Total number of elements that will be stored in-memory */
@@ -383,6 +346,12 @@ class Unique_impl : public Unique
   size_t memory_used;
   ulong elements;
   SORT_INFO sort;
+
+  /*
+    Storing all meta-data information of the expressions whose value are
+    being added to the Unique tree
+  */
+  Keys_descriptor *keys_descriptor;
 
   bool merge(TABLE *table, uchar *buff, size_t size, bool without_last_merge);
   bool flush();
@@ -445,28 +414,30 @@ public:
       If all the elements fit in the memory, then this returns all the
       distinct elements.
   */
-  ulong get_n_elements() override
+  ulong get_n_elements()
   {
     return is_in_memory() ? elements_in_tree() : elements;
   }
 
-  SORT_INFO *get_sort() override { return &sort; }
+  SORT_INFO *get_sort() { return &sort; }
 
-  Unique_impl(qsort_cmp2 comp_func, void *comp_func_fixed_arg,
+  Unique(qsort_cmp2 comp_func, void *comp_func_fixed_arg,
          uint size_arg, size_t max_in_memory_size_arg,
          uint min_dupl_count_arg, Keys_descriptor *desc);
-  ~Unique_impl();
-  ulong elements_in_tree() override { return tree.elements_in_tree; }
+  ~Unique();
+  ulong elements_in_tree() { return tree.elements_in_tree; }
 
-  bool unique_add(void *ptr) override
+  bool unique_add(void *ptr)
   {
     return unique_add(ptr, keys_descriptor->get_length_of_key((uchar*)ptr));
   }
 
-  bool is_in_memory() override { return (my_b_tell(&file) == 0); }
-  void close_for_expansion() override { tree.flag= TREE_ONLY_DUPS; }
+  Keys_descriptor *get_keys_descriptor() { return keys_descriptor; }
 
-  bool get(TABLE *table) override;
+  bool is_in_memory() { return (my_b_tell(&file) == 0); }
+  void close_for_expansion() { tree.flag= TREE_ONLY_DUPS; }
+
+  bool get(TABLE *table);
 
   /* Cost of searching for an element in the tree */
   inline static double get_search_cost(ulonglong tree_elems,
@@ -489,13 +460,14 @@ public:
     return (int) (sizeof(uint)*(1 + nkeys/max_elems_in_tree));
   }
 
-  void reset() override;
+  void reset();
   bool walk(TABLE *table, tree_walk_action action,
-            void *walk_action_arg) override;
+            void *walk_action_arg);
 
   uint get_size() const { return size; }
   uint get_full_size() const { return full_size; }
-  size_t get_max_in_memory_size() const override { return max_in_memory_size; }
+  size_t get_max_in_memory_size() const { return max_in_memory_size; }
+
   IO_CACHE *get_file()  { return &file; }
   int write_record_to_file(uchar *key);
 
@@ -505,13 +477,15 @@ public:
   // returns TRUE if the key to be inserted has only one component
   bool is_single_arg() { return keys_descriptor->is_single_arg(); }
 
-  friend int unique_write_to_file(uchar* key, element_count count, Unique_impl *unique);
-  friend int unique_write_to_ptrs(uchar* key, element_count count, Unique_impl *unique);
+  friend int unique_write_to_file(uchar* key, element_count count,
+                                  Unique *unique);
+  friend int unique_write_to_ptrs(uchar* key, element_count count,
+                                  Unique *unique);
 
   friend int unique_write_to_file_with_count(uchar* key, element_count count,
-                                             Unique_impl *unique);
+                                             Unique *unique);
   friend int unique_intersect_write_to_ptrs(uchar* key, element_count count,
-                                            Unique_impl *unique);
+                                            Unique *unique);
 };
 
 #endif /* UNIQUE_INCLUDED */

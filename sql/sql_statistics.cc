@@ -1716,7 +1716,7 @@ protected:
 
   /* Field for which the number of distinct values is to be find out */
   Field *table_field;  
-  Unique_impl *tree;       /* The helper object to contain distinct values */
+  Unique *tree;       /* The helper object to contain distinct values */
   uint tree_key_length; /* The length of the keys for the elements of 'tree */
 
   ulonglong distincts;
@@ -1811,9 +1811,9 @@ public:
     }
     if (!desc)
       return true;  // OOM
-    tree= new Unique_impl((qsort_cmp2) key_cmp,
-                          (void*) this, tree_key_length,
-                           max_heap_table_size, 1, desc);
+    tree= new Unique((qsort_cmp2) key_cmp,
+                     (void*) this, tree_key_length,
+                     max_heap_table_size, 1, desc);
     if (!tree)
       return true; // OOM
     return tree->get_keys_descriptor()->setup_for_field(thd, table_field);
@@ -1940,9 +1940,9 @@ public:
     Keys_descriptor *desc= new Fixed_size_keys_mem_comparable(tree_key_length);
     if (!desc)
       return true;
-    tree= new Unique_impl((qsort_cmp2) simple_ulonglong_key_cmp,
-                          (void*) this,
-                          tree_key_length, max_heap_table_size, 1, desc);
+    tree= new Unique((qsort_cmp2) simple_ulonglong_key_cmp,
+                     (void*) this,
+                     tree_key_length, max_heap_table_size, 1, desc);
     return tree == NULL;
   }
   static int simple_ulonglong_key_cmp(void* arg, uchar* key1, uchar* key2);

@@ -312,7 +312,7 @@ class Window_spec;
   any particular table (like COUNT(*)), returm 0 from Item_sum::used_tables(),
   but still return false from Item_sum::const_item().
 */
-class Unique_impl;
+class Unique;
 
 class Item_sum :public Item_func_or_sum
 {
@@ -602,11 +602,11 @@ public:
   virtual void setup_caches(THD *thd) {};
   virtual void set_partition_row_count(ulonglong count) { DBUG_ASSERT(0); }
   bool is_packing_allowed(TABLE* table, uint* total_length);
-  virtual Unique_impl *get_unique(qsort_cmp2 comp_func,
-                                  void *comp_func_fixed_arg,
-                                  uint size_arg, size_t max_in_memory_size_arg,
-                                  uint min_dupl_count_arg, bool allow_packing,
-                                  uint number_of_args);
+  virtual Unique *get_unique(qsort_cmp2 comp_func,
+                             void *comp_func_fixed_arg,
+                             uint size_arg, size_t max_in_memory_size_arg,
+                             uint min_dupl_count_arg, bool allow_packing,
+                             uint number_of_args);
   virtual Keys_descriptor *get_descriptor_for_fixed_size_keys(uint args_count,
                                                               uint size_arg);
   virtual Keys_descriptor *get_descriptor_for_variable_size_keys(uint args_count,
@@ -668,7 +668,7 @@ class Aggregator_distinct : public Aggregator
     For AVG/SUM(DISTINCT) we always use this tree (as it takes a single 
     argument) to get the distinct rows.
   */
-  Unique_impl *tree;
+  Unique *tree;
 
   /* 
     The length of the temp table row. Must be a member of the class as it
@@ -1957,7 +1957,7 @@ protected:
      @see Item_func_group_concat::add
      @see Item_func_group_concat::clear
    */
-  Unique_impl *unique_filter;
+  Unique *unique_filter;
   TABLE *table;
   ORDER **order;
   Name_resolution_context *context;

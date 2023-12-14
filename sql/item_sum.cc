@@ -4842,7 +4842,7 @@ bool Item_sum::is_packing_allowed(TABLE *table, uint* total_length)
     NULL       ERROR
 
 */
-Unique_impl*
+Unique*
 Item_sum::get_unique(qsort_cmp2 comp_func, void *comp_func_fixed_arg,
                      uint size_arg, size_t max_in_memory_size_arg,
                      uint min_dupl_count_arg, bool allow_packing,
@@ -4857,8 +4857,8 @@ Item_sum::get_unique(qsort_cmp2 comp_func, void *comp_func_fixed_arg,
 
   if (!desc)
     return NULL;
-  return new Unique_impl(comp_func, comp_func_fixed_arg, size_arg,
-                         max_in_memory_size_arg, min_dupl_count_arg, desc);
+  return new Unique(comp_func, comp_func_fixed_arg, size_arg,
+                    max_in_memory_size_arg, min_dupl_count_arg, desc);
 }
 
 
