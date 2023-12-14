@@ -326,7 +326,7 @@ protected:
     Storing all meta-data information of the expressions whose value are
     being added to the Unique tree
   */
-  Keys_descriptor *m_descriptor;
+  Keys_descriptor *keys_descriptor;
 public:
 
   virtual void reset() = 0;
@@ -346,7 +346,7 @@ public:
   virtual bool is_in_memory() = 0;
 
   virtual ulong elements_in_tree() = 0;
-  Keys_descriptor *get_keys_descriptor() { return m_descriptor; }
+  Keys_descriptor *get_keys_descriptor() { return keys_descriptor; }
 };
 
 
@@ -460,7 +460,7 @@ public:
 
   bool unique_add(void *ptr) override
   {
-    return unique_add(ptr, m_descriptor->get_length_of_key((uchar*)ptr));
+    return unique_add(ptr, keys_descriptor->get_length_of_key((uchar*)ptr));
   }
 
   bool is_in_memory() override { return (my_b_tell(&file) == 0); }
@@ -500,10 +500,10 @@ public:
   int write_record_to_file(uchar *key);
 
   // returns TRUE if the unique tree stores packed values
-  bool is_variable_sized() { return m_descriptor->is_variable_sized(); }
+  bool is_variable_sized() { return keys_descriptor->is_variable_sized(); }
 
   // returns TRUE if the key to be inserted has only one component
-  bool is_single_arg() { return m_descriptor->is_single_arg(); }
+  bool is_single_arg() { return keys_descriptor->is_single_arg(); }
 
   friend int unique_write_to_file(uchar* key, element_count count, Unique_impl *unique);
   friend int unique_write_to_ptrs(uchar* key, element_count count, Unique_impl *unique);

@@ -105,7 +105,7 @@ Unique_impl::Unique_impl(qsort_cmp2 comp_func, void * comp_func_fixed_arg,
 
   (void) open_cached_file(&file, mysql_tmpdir,TEMP_PREFIX, DISK_BUFFER_SIZE,
                           MYF(MY_WME));
-  m_descriptor= desc;
+  keys_descriptor= desc;
 }
 
 
@@ -372,7 +372,7 @@ Unique_impl::~Unique_impl()
   close_cached_file(&file);
   delete_tree(&tree, 0);
   delete_dynamic(&file_ptrs);
-  delete m_descriptor;
+  delete keys_descriptor;
 }
 
 
@@ -869,7 +869,7 @@ err:
 
 int Unique_impl::write_record_to_file(uchar *key)
 {
-  return my_b_write(get_file(), key, m_descriptor->get_length_of_key(key));
+  return my_b_write(get_file(), key, keys_descriptor->get_length_of_key(key));
 }
 
 
