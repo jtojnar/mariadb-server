@@ -6992,14 +6992,15 @@ struct SORT_FIELD_ATTR
   uint pack_sort_string(uchar *to, const Binary_string *str,
                         CHARSET_INFO *cs) const;
   int compare_packed_fixed_size_vals(uchar *a, size_t *a_len,
-                                     uchar *b, size_t *b_len);
+                                     uchar *b, size_t *b_len) const;
   int compare_packed_varstrings(uchar *a, size_t *a_len,
-                                uchar *b, size_t *b_len);
-  int compare_packed_varstrings(uchar *a, uchar *b);
+                                uchar *b, size_t *b_len) const;
+  int compare_packed_varstrings(uchar *a, uchar *b) const;
   bool check_if_packing_possible(THD *thd) const;
-  bool is_variable_sized() { return type == VARIABLE_SIZE; }
+  bool is_variable_sized() const { return type == VARIABLE_SIZE; }
   void set_length_and_original_length(THD *thd, uint length_arg);
   void setup_key_part_for_variable_size_key(Field *fld);
+  void setup_key_part_for_variable_size_key(Item *item);
   void setup_key_part_for_fixed_size_key(Field *fld);
 
   inline static int compare_null_flag(bool a_is_null, bool b_is_null);
@@ -7015,7 +7016,7 @@ struct SORT_FIELD: public SORT_FIELD_ATTR
   void setup_key_part_for_variable_size_key(Item *item);
   void setup_key_part_for_fixed_size_key(Field *fld);
   int compare_fixed_size_vals(uchar *a, size_t *a_len,
-                              uchar *b, size_t *b_len);
+                              uchar *b, size_t *b_len) const;
 };
 
 
