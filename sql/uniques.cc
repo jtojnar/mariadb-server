@@ -922,10 +922,10 @@ Variable_size_keys_descriptor::setup_for_item(THD *thd, Item_sum *item,
     if (arg->type() == Item::FIELD_ITEM)
     {
       Field *field= ((Item_field*)arg)->field;
-      pos->setup_key_part_for_variable_size_key(field);
+      pos->setup_key_part(field);
     }
     else
-      pos->setup_key_part_for_variable_size_key(arg);
+      pos->setup_key_part(arg);
     pos++;
   }
   return false;
@@ -950,7 +950,7 @@ bool Variable_size_keys_descriptor::setup_for_field(THD *thd, Field *field)
   if (init(thd, 1))
     return true;
   pos= sortorder;
-  pos->setup_key_part_for_variable_size_key(field);
+  pos->setup_key_part(field);
   return false;
 }
 
@@ -1108,7 +1108,7 @@ Variable_size_composite_key_desc_for_gconcat::setup_for_item(THD *thd,
       continue;
 
     Field *field= arg->get_tmp_table_field();
-    pos->setup_key_part_for_variable_size_key(field);
+    pos->setup_key_part(field);
     pos++;
   }
   return false;
@@ -1155,7 +1155,7 @@ Fixed_size_keys_descriptor::setup_for_item(THD *thd, Item_sum *item,
     Field *field= arg->get_tmp_table_field();
 
     DBUG_ASSERT(field);
-    pos->setup_key_part_for_fixed_size_key(field);
+    pos->setup_key_part(field);
     pos++;
   }
   return false;
@@ -1169,7 +1169,7 @@ Fixed_size_keys_descriptor::setup_for_field(THD *thd, Field *field)
   if (Keys_descriptor::init(thd, 1))
     return true;
   pos= sortorder;
-  pos->setup_key_part_for_fixed_size_key(field);
+  pos->setup_key_part(field);
 
   return false;
 }

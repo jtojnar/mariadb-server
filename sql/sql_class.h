@@ -6999,9 +6999,7 @@ struct SORT_FIELD_ATTR
   bool check_if_packing_possible(THD *thd) const;
   bool is_variable_sized() const { return type == VARIABLE_SIZE; }
   void set_length_and_original_length(THD *thd, uint length_arg);
-  void setup_key_part_for_variable_size_key(Field *fld);
-  void setup_key_part_for_variable_size_key(Item *item);
-  void setup_key_part_for_fixed_size_key(Field *fld);
+  void setup_key_part(Field *fld);
 
   inline static int compare_null_flag(bool a_is_null, bool b_is_null);
 };
@@ -7012,9 +7010,8 @@ struct SORT_FIELD: public SORT_FIELD_ATTR
   Field *field;				/* Field to sort */
   Item	*item;				/* Item if not sorting fields */
   bool reverse;				/* if descending sort */
-  void setup_key_part_for_variable_size_key(Field *fld);
-  void setup_key_part_for_variable_size_key(Item *item);
-  void setup_key_part_for_fixed_size_key(Field *fld);
+  void setup_key_part(Field *fld);
+  void setup_key_part(Item *item);
   int compare_fixed_size_vals(uchar *a, size_t *a_len,
                               uchar *b, size_t *b_len) const;
 };

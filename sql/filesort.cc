@@ -2867,12 +2867,12 @@ void SORT_FIELD_ATTR::set_length_and_original_length(THD *thd, uint length_arg)
 
 */
 
-void SORT_FIELD::setup_key_part_for_variable_size_key(Field *fld)
+void SORT_FIELD::setup_key_part(Field *fld)
 {
   field= fld;
   item= NULL;
   reverse= false;
-  SORT_FIELD_ATTR::setup_key_part_for_variable_size_key(fld);
+  SORT_FIELD_ATTR::setup_key_part(fld);
 }
 
 
@@ -2887,14 +2887,14 @@ void SORT_FIELD::setup_key_part_for_variable_size_key(Field *fld)
     Currently used only by Unique object
 */
 
-void SORT_FIELD::setup_key_part_for_variable_size_key(Item *item_arg)
+void SORT_FIELD::setup_key_part(Item *item_arg)
 {
   Field *fld= item_arg->get_tmp_table_field();
   DBUG_ASSERT(fld);
   item= item_arg;
   field= NULL;
   reverse= false;
-  SORT_FIELD_ATTR::setup_key_part_for_variable_size_key(fld);
+  SORT_FIELD_ATTR::setup_key_part(fld);
 }
 
 
@@ -2909,35 +2909,16 @@ void SORT_FIELD::setup_key_part_for_variable_size_key(Item *item_arg)
     Currently used only by Unique object
 */
 
-void SORT_FIELD::setup_key_part_for_fixed_size_key(Field *fld)
-{
-  field= fld;
-  item= NULL;
-  reverse= false;
-  SORT_FIELD_ATTR::setup_key_part_for_fixed_size_key(fld);
-}
 
-
-void SORT_FIELD_ATTR::setup_key_part_for_fixed_size_key(Field *field)
+void SORT_FIELD_ATTR::setup_key_part(Field *field)
 {
-  original_length= length= field->pack_length();
+  original_length= length= field->sort_length_without_suffix();
   cs= field->sort_charset();
   suffix_length= 0;
-  type=  SORT_FIELD_ATTR::FIXED_SIZE;
-  maybe_null= field->maybe_null();
-  length_bytes= 0;
-}
-
-
-void SORT_FIELD_ATTR::setup_key_part_for_variable_size_key(Field *fld)
-{
-  original_length= length= fld->sort_length_without_suffix();
-  cs= fld->sort_charset();
-  suffix_length= 0;
-  type= fld->is_packable() ?
+  type= field->is_packable() ?
         SORT_FIELD_ATTR::VARIABLE_SIZE :
         SORT_FIELD_ATTR::FIXED_SIZE;
-  maybe_null= fld->maybe_null();
+  maybe_null= field->maybe_null();
   length_bytes= is_variable_sized() ? number_storage_requirement(length) : 0;
 }
 
