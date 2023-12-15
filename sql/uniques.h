@@ -86,15 +86,8 @@ protected:
   {
     FIXED_SIZED_KEYS= 0,
     VARIABLE_SIZED_KEYS
-  };
+  } keys_type;
 
-  /*
-    Storing information about the attributes for the keys
-    Each bit for the flag points to an attribute
-    Currently only 2 bits are used, so the remaining bit can be used
-    in the future if some extension is required for descriptors
-  */
-  uint flags;
   /*
     Array of SORT_FIELD structure storing the information about the key parts
     in the sort key of the Unique tree
@@ -112,7 +105,7 @@ public:
   virtual uint get_length_of_key(uchar *ptr) = 0;
   bool is_variable_sized()
   {
-    return flags & (1 << VARIABLE_SIZED_KEYS);
+    return keys_type == VARIABLE_SIZED_KEYS;
   }
   virtual int compare_keys(uchar *a, uchar *b) = 0;
 

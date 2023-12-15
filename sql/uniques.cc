@@ -879,7 +879,7 @@ int Unique::write_record_to_file(uchar *key)
 Variable_size_keys_descriptor::Variable_size_keys_descriptor(uint length)
 {
   max_length= length;
-  flags= (1 << VARIABLE_SIZED_KEYS);
+  keys_type= VARIABLE_SIZED_KEYS;
   sort_keys= NULL;
   sortorder= NULL;
 }
@@ -1121,7 +1121,7 @@ Variable_size_composite_key_desc_for_gconcat::setup_for_item(THD *thd,
 Fixed_size_keys_descriptor::Fixed_size_keys_descriptor(uint length)
 {
   max_length= length;
-  flags= (1 << FIXED_SIZED_KEYS);
+  keys_type= FIXED_SIZED_KEYS;
   sort_keys= NULL;
   sortorder= NULL;
 }
