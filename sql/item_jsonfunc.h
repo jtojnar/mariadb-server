@@ -681,10 +681,8 @@ public:
   Keys_descriptor* get_descriptor_for_fixed_size_keys(uint args_count,
                                                       uint size_arg) const override
   {
-    if (args_count == 1)
-      return new Fixed_size_keys_descriptor_with_nulls(size_arg);
-    // TODO(cvicentiu) QQ :( What? We are in JSON_arrayagg
-    return new Fixed_size_keys_for_group_concat(size_arg);
+    DBUG_ASSERT(args_count == 1);
+    return new Fixed_size_keys_descriptor_with_nulls(size_arg);
   }
 
   qsort_cmp2 get_comparator_function_for_distinct(bool packed) const override

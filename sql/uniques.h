@@ -17,6 +17,7 @@
 #define UNIQUE_INCLUDED
 
 #include "mariadb.h"
+#include "field.h"
 #include "sql_string.h"
 #include "filesort.h"
 
