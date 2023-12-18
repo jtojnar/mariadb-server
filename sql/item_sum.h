@@ -1931,12 +1931,17 @@ public:
 C_MODE_START
 int group_concat_key_cmp_with_distinct(void* arg, const void* key1,
                                        const void* key2);
-int group_concat_key_cmp_with_distinct_with_nulls(void* arg, const void* key1,
-                                                  const void* key2);
+int json_arrayagg_key_cmp_with_distinct(void* arg, const void* key1,
+                                        const void* key2);
+
+int group_concat_packed_key_cmp_with_distinct(void *arg,
+                                              const void *key1,
+                                              const void *key2);
+
 int group_concat_key_cmp_with_order(void* arg, const void* key1,
                                     const void* key2);
-int group_concat_key_cmp_with_order_with_nulls(void *arg, const void *key1,
-                                               const void *key2);
+int json_arrayagg_key_cmp_with_order(void *arg, const void *key1,
+                                     const void *key2);
 C_MODE_END
 
 class Item_func_group_concat : public Item_sum
@@ -1996,17 +2001,11 @@ protected:
 
   friend int group_concat_key_cmp_with_distinct(void* arg, const void* key1,
                                                 const void* key2);
-  friend int group_concat_key_cmp_with_distinct_with_nulls(void* arg,
-                                                           const void* key1,
-                                                           const void* key2);
   friend int group_concat_packed_key_cmp_with_distinct(void *arg,
                                                        const void *key1,
                                                        const void *key2);
   friend int group_concat_key_cmp_with_order(void* arg, const void* key1,
-					     const void* key2);
-  friend int group_concat_key_cmp_with_order_with_nulls(void *arg,
-                                       const void *key1, const void *key2);
-
+                                             const void* key2);
   bool repack_tree(THD *thd);
 
   /*
@@ -2101,8 +2100,9 @@ public:
     { context= (Name_resolution_context *)cntx; return FALSE; }
   Item *get_copy(THD *thd) override
   { return get_item_copy<Item_func_group_concat>(thd, this); }
-  qsort_cmp2 get_comparator_function_for_distinct(bool packed);
-  qsort_cmp2 get_comparator_function_for_order_by();
+  virtual qsort_cmp2 get_comparator_function_for_distinct(bool packed) const;
+  virtual qsort_cmp2 get_comparator_function_for_order_by() const
+  { return group_concat_key_cmp_with_order; }
   uchar* get_record_pointer();
   uint get_null_bytes();
   bool is_distinct_packed();

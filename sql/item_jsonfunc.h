@@ -677,6 +677,25 @@ public:
   Item *copy_or_same(THD* thd) override;
   Item *get_copy(THD *thd) override
   { return get_item_copy<Item_func_json_arrayagg>(thd, this); }
+
+  qsort_cmp2 get_comparator_function_for_distinct(bool packed) const override
+  {
+    // TODO(cvicentiu) packed returns a group_concat function... Is this ok?
+    if (packed)
+      return group_concat_packed_key_cmp_with_distinct;
+    return json_arrayagg_key_cmp_with_distinct;
+  }
+
+  qsort_cmp2 get_comparator_function_for_order_by() const override
+  { return json_arrayagg_key_cmp_with_order; }
+
+  friend int json_arrayagg_key_cmp_with_distinct(void* arg,
+                                                 const void* key1,
+                                                 const void* key2);
+  friend int json_arrayagg_key_cmp_with_order(void *arg,
+                                              const void *key1,
+                                              const void *key2);
+
 };
 
 

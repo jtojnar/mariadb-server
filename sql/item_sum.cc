@@ -3624,16 +3624,13 @@ int group_concat_key_cmp_with_distinct(void* arg, const void* key1,
 /*
   @brief
     Comparator function for DISTINCT clause taking into account NULL values.
-
-  @note
-    Used for JSON_ARRAYAGG function
 */
 
-int group_concat_key_cmp_with_distinct_with_nulls(void* arg,
-                                                  const void* key1,
-                                                  const void* key2)
+int json_arrayagg_key_cmp_with_distinct(void* arg,
+                                        const void* key1,
+                                        const void* key2)
 {
-  Item_func_group_concat *item_func= (Item_func_group_concat*)arg;
+  Item_func_json_arrayagg *item_func= (Item_func_json_arrayagg*)arg;
   return item_func->unique_filter->compare_keys((uchar *)key1, (uchar *)key2);
 }
 
@@ -3722,10 +3719,10 @@ int group_concat_key_cmp_with_order(void* arg, const void* key1,
     Used for JSON_ARRAYAGG function
 */
 
-int group_concat_key_cmp_with_order_with_nulls(void *arg, const void *key1_arg,
-                                               const void *key2_arg)
+int json_arrayagg_key_cmp_with_order(void *arg, const void *key1_arg,
+                                     const void *key2_arg)
 {
-  Item_func_group_concat* grp_item= (Item_func_group_concat*) arg;
+  Item_func_json_arrayagg* grp_item= (Item_func_json_arrayagg*) arg;
   ORDER **order_item, **end;
 
   uchar *key1= (uchar*)key1_arg + grp_item->table->s->null_bytes;
@@ -4647,26 +4644,11 @@ String* Item_func_group_concat::val_str(String* str)
 */
 
 qsort_cmp2
-Item_func_group_concat::get_comparator_function_for_distinct(bool packed)
+Item_func_group_concat::get_comparator_function_for_distinct(bool packed) const
 {
-  return packed ?
-         group_concat_packed_key_cmp_with_distinct :
-         (skip_nulls() ?
-          group_concat_key_cmp_with_distinct :
-          group_concat_key_cmp_with_distinct_with_nulls);
-}
-
-
-/*
-  @brief
-    Get the comparator function for ORDER BY clause
-*/
-
-qsort_cmp2 Item_func_group_concat::get_comparator_function_for_order_by()
-{
-  return skip_nulls() ?
-         group_concat_key_cmp_with_order :
-         group_concat_key_cmp_with_order_with_nulls;
+  if (packed)
+    return group_concat_packed_key_cmp_with_distinct;
+  return group_concat_key_cmp_with_distinct;
 }
 
 
