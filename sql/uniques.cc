@@ -971,11 +971,11 @@ bool Variable_size_keys_descriptor::setup_for_field(THD *thd, Field *field)
 
 */
 
-int Variable_size_composite_key_desc::compare_keys(uchar *a_ptr,
-                                                   uchar *b_ptr) const
+int Variable_size_composite_key_desc::compare_keys(const uchar *a_ptr,
+                                                   const uchar *b_ptr) const
 {
-  uchar *a= a_ptr + SIZE_OF_LENGTH_FIELD;
-  uchar *b= b_ptr + SIZE_OF_LENGTH_FIELD;
+  const uchar *a= a_ptr + SIZE_OF_LENGTH_FIELD;
+  const uchar *b= b_ptr + SIZE_OF_LENGTH_FIELD;
   int retval= 0;
   size_t a_len, b_len;
   for (SORT_FIELD *sort_field= sort_keys->begin();
@@ -995,11 +995,11 @@ int Variable_size_composite_key_desc::compare_keys(uchar *a_ptr,
 }
 
 
-int Variable_size_composite_key_desc_for_gconcat::compare_keys(uchar *a_ptr,
-                                                               uchar *b_ptr) const
+int Variable_size_composite_key_desc_for_gconcat::compare_keys(const uchar *a_ptr,
+                                                               const uchar *b_ptr) const
 {
-  uchar *a= a_ptr + SIZE_OF_LENGTH_FIELD;
-  uchar *b= b_ptr + SIZE_OF_LENGTH_FIELD;
+  const uchar *a= a_ptr + SIZE_OF_LENGTH_FIELD;
+  const uchar *b= b_ptr + SIZE_OF_LENGTH_FIELD;
   int retval= 0;
   size_t a_len, b_len;
   for (SORT_FIELD *sort_field= sort_keys->begin();
@@ -1019,7 +1019,7 @@ int Variable_size_composite_key_desc_for_gconcat::compare_keys(uchar *a_ptr,
 }
 
 
-int Variable_size_keys_simple::compare_keys(uchar *a, uchar *b) const
+int Variable_size_keys_simple::compare_keys(const uchar *a, const uchar *b) const
 {
   return sort_keys->compare_keys_for_single_arg(a + SIZE_OF_LENGTH_FIELD,
                                                 b + SIZE_OF_LENGTH_FIELD);
@@ -1130,7 +1130,7 @@ Fixed_size_keys_descriptor::Fixed_size_keys_descriptor(uint length)
 }
 
 
-int Fixed_size_keys_descriptor::compare_keys(uchar *a, uchar *b) const
+int Fixed_size_keys_descriptor::compare_keys(const uchar *a, const uchar *b) const
 {
   DBUG_ASSERT(sort_keys);
   SORT_FIELD *sort_field= sort_keys->begin();
@@ -1178,14 +1178,16 @@ Fixed_size_keys_descriptor::setup_for_field(THD *thd, Field *field)
 }
 
 
-int Fixed_size_keys_mem_comparable::compare_keys(uchar *key1, uchar *key2) const
+int Fixed_size_keys_mem_comparable::compare_keys(const uchar *key1,
+                                                 const uchar *key2) const
 {
   return memcmp(key1, key2, max_length);
 }
 
 
 int
-Fixed_size_composite_keys_descriptor::compare_keys(uchar *key1, uchar *key2) const
+Fixed_size_composite_keys_descriptor::compare_keys(const uchar *key1,
+                                                   const uchar *key2) const
 {
   for (SORT_FIELD *sort_field= sort_keys->begin();
        sort_field != sort_keys->end(); sort_field++)
@@ -1201,15 +1203,16 @@ Fixed_size_composite_keys_descriptor::compare_keys(uchar *key1, uchar *key2) con
 }
 
 
-int Fixed_size_keys_for_rowids::compare_keys(uchar *key1, uchar *key2) const
+int Fixed_size_keys_for_rowids::compare_keys(const uchar *key1,
+                                             const uchar *key2) const
 {
   return file->cmp_ref(key1, key2);
 }
 
 
 int
-Fixed_size_keys_descriptor_with_nulls::compare_keys(uchar *key1_arg,
-                                                    uchar *key2_arg) const
+Fixed_size_keys_descriptor_with_nulls::compare_keys(const uchar *key1_arg,
+                                                    const uchar *key2_arg) const
 {
 
   /*
@@ -1244,7 +1247,8 @@ Fixed_size_keys_descriptor_with_nulls::compare_keys(uchar *key1_arg,
 }
 
 
-int Fixed_size_keys_for_group_concat::compare_keys(uchar *key1, uchar *key2) const
+int Fixed_size_keys_for_group_concat::compare_keys(const uchar *key1,
+                                                   const uchar *key2) const
 {
   for (SORT_FIELD *sort_field= sort_keys->begin();
        sort_field != sort_keys->end(); sort_field++)

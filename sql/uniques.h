@@ -107,7 +107,7 @@ public:
   {
     return keys_type == VARIABLE_SIZED_KEYS;
   }
-  virtual int compare_keys(uchar *a, uchar *b) const = 0;
+  virtual int compare_keys(const uchar *a, const uchar *b) const = 0;
 
   // Fill structures like sort_keys, sortorder
   virtual bool setup_for_item(THD *thd, Item_sum *item,
@@ -137,7 +137,7 @@ public:
   bool setup_for_field(THD *thd, Field *field) override;
   bool setup_for_item(THD *thd, Item_sum *item,
                       uint non_const_args, uint arg_count) override;
-  virtual int compare_keys(uchar *a, uchar *b) const override;
+  int compare_keys(const uchar *a, const uchar *b) const override;
   virtual bool is_single_arg() override { return true; }
 };
 
@@ -151,7 +151,7 @@ public:
   Fixed_size_keys_mem_comparable(uint length)
     :Fixed_size_keys_descriptor(length) {}
   ~Fixed_size_keys_mem_comparable() {}
-  int compare_keys(uchar *a, uchar *b) const override;
+  int compare_keys(const uchar *a, const uchar *b) const override;
 };
 
 
@@ -168,7 +168,7 @@ public:
     :Fixed_size_keys_descriptor(file_arg->ref_length), file(file_arg)
   { }
   ~Fixed_size_keys_for_rowids() {}
-  int compare_keys(uchar *a, uchar *b) const override;
+  int compare_keys(const uchar *a, const uchar *b) const override;
 };
 
 
@@ -183,7 +183,7 @@ public:
   Fixed_size_keys_descriptor_with_nulls(uint length)
     : Fixed_size_keys_descriptor(length) {}
   ~Fixed_size_keys_descriptor_with_nulls() {}
-  int compare_keys(uchar *a, uchar *b) const override;
+  int compare_keys(const uchar *a, const uchar *b) const override;
 };
 
 
@@ -196,7 +196,7 @@ public:
   Fixed_size_keys_for_group_concat(uint length)
     : Fixed_size_keys_descriptor(length) {}
   ~Fixed_size_keys_for_group_concat() {}
-  int compare_keys(uchar *a, uchar *b) const override;
+  int compare_keys(const uchar *a, const uchar *b) const override;
 };
 
 
@@ -210,7 +210,7 @@ public:
   Fixed_size_composite_keys_descriptor(uint length)
     : Fixed_size_keys_descriptor(length) {}
   ~Fixed_size_composite_keys_descriptor() {}
-  int compare_keys(uchar *a, uchar *b) const override;
+  int compare_keys(const uchar *a, const uchar *b) const override;
   bool is_single_arg() override { return false; }
 };
 
@@ -228,7 +228,6 @@ public:
   {
     return read_packed_length(ptr);
   }
-  virtual int compare_keys(uchar *a, uchar *b) const override { return 0; }
   virtual bool is_single_arg() override { return false; }
 
   virtual bool setup_for_item(THD *thd, Item_sum *item,
@@ -264,7 +263,7 @@ public:
   Variable_size_keys_simple(uint length)
     :Variable_size_keys_descriptor(length), Encode_variable_size_key() {}
   ~Variable_size_keys_simple() {}
-  int compare_keys(uchar *a, uchar *b) const override;
+  int compare_keys(const uchar *a, const uchar *b) const override;
   uchar* make_record(bool exclude_nulls) override;
   uchar* get_rec_ptr() { return rec_ptr; }
   bool is_single_arg() override { return true; }
@@ -282,7 +281,7 @@ public:
   Variable_size_composite_key_desc(uint length)
     : Variable_size_keys_descriptor(length), Encode_variable_size_key() {}
   ~Variable_size_composite_key_desc() {}
-  int compare_keys(uchar *a, uchar *b) const override;
+  int compare_keys(const uchar *a, const uchar *b) const override;
   uchar* make_record(bool exclude_nulls) override;
   bool init(THD *thd, uint count) override;
 };
@@ -301,7 +300,7 @@ public:
   Variable_size_composite_key_desc_for_gconcat(uint length)
     : Variable_size_keys_descriptor(length), Encode_key_for_group_concat() {}
   ~Variable_size_composite_key_desc_for_gconcat() {}
-  int compare_keys(uchar *a, uchar *b) const override;
+  int compare_keys(const uchar *a, const uchar *b) const override;
   uchar* make_record(bool exclude_nulls) override;
   bool setup_for_item(THD *thd, Item_sum *item,
                       uint non_const_args, uint arg_count) override;
@@ -477,7 +476,7 @@ public:
 
   // returns TRUE if the key to be inserted has only one component
   bool is_single_arg() { return keys_descriptor->is_single_arg(); }
-  int compare_keys(uchar *a, uchar *b) const
+  int compare_keys(const uchar *a, const uchar *b) const
   { return keys_descriptor->compare_keys(a, b); }
   SORT_FIELD *get_sortorder() { return keys_descriptor->get_sortorder(); }
 
