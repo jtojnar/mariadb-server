@@ -3207,23 +3207,6 @@ int Sort_keys::compare_keys(const uchar *a, const uchar *b) const
 
 /*
   @brief
-    Compare two packed sort keys with a single key part
-
-  @retval
-    >0   key a greater than b
-    =0   key a equal to b
-    <0   key a less than b
-*/
-int Sort_keys::compare_keys_for_single_arg(const uchar *a, const uchar *b) const
-{
-  SORT_FIELD *sort_field= begin();
-
-  return sort_field->compare_packed_varstrings(a, b);
-}
-
-
-/*
-  @brief
     Store a packed string in the buffer
 
   @param to               buffer

@@ -44,7 +44,6 @@ public:
   virtual ~Encode_key();
   virtual uchar* make_encoded_record(Sort_keys *keys, bool exclude_nulls) = 0;
   bool init(uint length);
-  uchar *get_rec_ptr() { return rec_ptr; }
 };
 
 
@@ -111,16 +110,14 @@ public:
   virtual int compare_keys(const uchar *a, const uchar *b) const = 0;
 
   // Fill structures like sort_keys, sortorder
-  virtual bool setup_for_item(THD *thd, Item_sum *item,
-                              uint non_const_args, uint arg_count)
-  { return false; }
-  virtual bool setup_for_field(THD *thd, Field *field) { return false; }
+  bool setup_for_item(THD *thd, Item_sum *item,
+                      uint non_const_args, uint arg_count);
+  bool setup_for_field(THD *thd, Field *field);
 
-  virtual Sort_keys *get_keys() { return sort_keys; }
+  Sort_keys *get_keys() { return sort_keys; }
   SORT_FIELD *get_sortorder() { return sortorder; }
 
   virtual uchar* make_record(bool exclude_nulls) = 0;
-  virtual bool is_single_arg() = 0;
   virtual bool init(THD *thd, uint count);
 };
 
@@ -135,15 +132,11 @@ public:
   Fixed_size_keys_descriptor(uint length);
   virtual ~Fixed_size_keys_descriptor() {}
   uint get_length_of_key(uchar *ptr) override { return max_length; }
-  bool setup_for_field(THD *thd, Field *field) override;
-  bool setup_for_item(THD *thd, Item_sum *item,
-                      uint non_const_args, uint arg_count) override;
   int compare_keys(const uchar *a, const uchar *b) const override;
   virtual uchar* make_record(bool exclude_nulls) override {
     DBUG_ASSERT(0);
     return NULL;
   }
-  virtual bool is_single_arg() override { return true; }
 };
 
 
@@ -216,7 +209,6 @@ public:
     : Fixed_size_keys_descriptor(length) {}
   ~Fixed_size_composite_keys_descriptor() {}
   int compare_keys(const uchar *a, const uchar *b) const override;
-  bool is_single_arg() override { return false; }
 };
 
 
@@ -233,11 +225,6 @@ public:
   {
     return read_packed_length(ptr);
   }
-  virtual bool is_single_arg() override { return false; }
-
-  virtual bool setup_for_item(THD *thd, Item_sum *item,
-                              uint non_const_args, uint arg_count) override;
-  virtual bool setup_for_field(THD *thd, Field *field) override;
 
   // All need to be moved to some new class
   // returns the length of the key along with the length bytes for the key
@@ -270,8 +257,6 @@ public:
   ~Variable_size_keys_simple() {}
   int compare_keys(const uchar *a, const uchar *b) const override;
   uchar* make_record(bool exclude_nulls) override;
-  uchar* get_rec_ptr() { return rec_ptr; }
-  bool is_single_arg() override { return true; }
   bool init(THD *thd, uint count) override;
 };
 
@@ -307,8 +292,6 @@ public:
   ~Variable_size_composite_key_desc_for_gconcat() {}
   int compare_keys(const uchar *a, const uchar *b) const override;
   uchar* make_record(bool exclude_nulls) override;
-  bool setup_for_item(THD *thd, Item_sum *item,
-                      uint non_const_args, uint arg_count) override;
   bool init(THD *thd, uint count) override;
 };
 
@@ -479,8 +462,6 @@ public:
   // returns TRUE if the unique tree stores packed values
   bool is_variable_sized() { return keys_descriptor->is_variable_sized(); }
 
-  // returns TRUE if the key to be inserted has only one component
-  bool is_single_arg() { return keys_descriptor->is_single_arg(); }
   int compare_keys(const uchar *a, const uchar *b) const
   { return keys_descriptor->compare_keys(a, b); }
   SORT_FIELD *get_sortorder() { return keys_descriptor->get_sortorder(); }

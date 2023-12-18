@@ -887,78 +887,6 @@ Variable_size_keys_descriptor::Variable_size_keys_descriptor(uint length)
 
 /*
   @brief
-    Setup the structures that are used when Unique stores packed values
-
-  @param thd                   thread structure
-  @param item                  item of aggregate function
-  @param non_const_args        number of non constant arguments
-  @param arg_count             total number of arguments
-
-  @note
-    This implementation is used by GROUP_CONCAT and COUNT_DISTINCT
-    as it can have more than one arguments in the argument list.
-
-  @retval
-    TRUE  error
-    FALSE setup successful
-*/
-
-bool
-Variable_size_keys_descriptor::setup_for_item(
-  THD *thd,
-  Item_sum *item,
-  uint non_const_args,
-  uint arg_count)
-{
-  if (init(thd, non_const_args))
-    return true;
-  SORT_FIELD *pos;
-  pos= sortorder;
-
-  for (uint i= 0; i < arg_count; i++)
-  {
-    Item *arg= item->get_arg(i);
-    if (arg->const_item())
-      continue;
-
-    if (arg->type() == Item::FIELD_ITEM)
-    {
-      Field *field= ((Item_field*)arg)->field;
-      pos->setup_key_part(field);
-    }
-    else
-      pos->setup_key_part(arg);
-    pos++;
-  }
-  return false;
-}
-
-
-/*
-  @brief
-    Setup the structures that are used when Unique stores packed values
-
-  @param thd                   thread structure
-  @param field                 field structure
-
-  @retval
-    TRUE  error
-    FALSE setup successful
-*/
-
-bool Variable_size_keys_descriptor::setup_for_field(THD *thd, Field *field)
-{
-  SORT_FIELD *pos;
-  if (init(thd, 1))
-    return true;
-  pos= sortorder;
-  pos->setup_key_part(field);
-  return false;
-}
-
-
-/*
-  @brief
     Compare two packed keys inside the Unique tree
 
   @param a_ptr             packed sort key
@@ -1021,8 +949,8 @@ int Variable_size_composite_key_desc_for_gconcat::compare_keys(const uchar *a_pt
 
 int Variable_size_keys_simple::compare_keys(const uchar *a, const uchar *b) const
 {
-  return sort_keys->compare_keys_for_single_arg(a + SIZE_OF_LENGTH_FIELD,
-                                                b + SIZE_OF_LENGTH_FIELD);
+  return sort_keys->compare_keys(a + SIZE_OF_LENGTH_FIELD,
+                                 b + SIZE_OF_LENGTH_FIELD);
 }
 
 
@@ -1092,34 +1020,7 @@ bool Variable_size_keys_simple::init(THD *thd, uint count)
 }
 
 
-bool
-Variable_size_composite_key_desc_for_gconcat::setup_for_item(
-  THD *thd,
-  Item_sum *item,
-  uint non_const_args,
-  uint arg_count)
-{
-  if (init(thd, non_const_args))
-    return true;
-  SORT_FIELD *pos;
-  pos= sortorder;
-
-  for (uint i= 0; i < arg_count; i++)
-  {
-    Item *arg= item->get_arg(i);
-    if (arg->const_item())
-      continue;
-
-    Field *field= arg->get_tmp_table_field();
-    pos->setup_key_part(field);
-    pos++;
-  }
-  return false;
-}
-
-
 /*                   FIXED SIZE KEYS DESCRIPTOR                             */
-
 
 Fixed_size_keys_descriptor::Fixed_size_keys_descriptor(uint length)
 {
@@ -1140,11 +1041,11 @@ int Fixed_size_keys_descriptor::compare_keys(const uchar *a, const uchar *b) con
 
 
 bool
-Fixed_size_keys_descriptor::setup_for_item(THD *thd, Item_sum *item,
-                                           uint non_const_args,
-                                           uint arg_count)
+Keys_descriptor::setup_for_item(THD *thd, Item_sum *item,
+                                uint non_const_args,
+                                uint arg_count)
 {
-  if (Keys_descriptor::init(thd, non_const_args))
+  if (init(thd, non_const_args))
     return true;
   SORT_FIELD *pos;
   pos= sortorder;
@@ -1165,11 +1066,10 @@ Fixed_size_keys_descriptor::setup_for_item(THD *thd, Item_sum *item,
 }
 
 
-bool
-Fixed_size_keys_descriptor::setup_for_field(THD *thd, Field *field)
+bool Keys_descriptor::setup_for_field(THD *thd, Field *field)
 {
   SORT_FIELD *pos;
-  if (Keys_descriptor::init(thd, 1))
+  if (init(thd, 1))
     return true;
   pos= sortorder;
   pos->setup_key_part(field);
@@ -1292,17 +1192,13 @@ Encode_key::~Encode_key()
 uchar* Encode_variable_size_key::make_encoded_record(Sort_keys *sort_keys,
                                                      bool exclude_nulls)
 {
-  SORT_FIELD *sort_field;
-  uchar *to= rec_ptr;
+  uchar *to= rec_ptr + Variable_size_keys_descriptor::SIZE_OF_LENGTH_FIELD;
 
-  to+= Variable_size_keys_descriptor::SIZE_OF_LENGTH_FIELD;
-
-  for (sort_field=sort_keys->begin() ;
-       sort_field != sort_keys->end() ;
+  for (SORT_FIELD *sort_field= sort_keys->begin();
+       sort_field != sort_keys->end();
        sort_field++)
   {
     uint length;
-    bool maybe_null=0;
     if (sort_field->field)
     { // Field
       length= sort_field->field->make_packed_sort_key_part(to, sort_field);
@@ -1315,9 +1211,9 @@ uchar* Encode_variable_size_key::make_encoded_record(Sort_keys *sort_keys,
                                                               &tmp_buffer);
     }
 
-    if ((maybe_null= sort_field->maybe_null))
+    if (sort_field->maybe_null)
     {
-      if (exclude_nulls && length == 0)  // rejecting NULLS
+      if (!length && exclude_nulls)  // rejecting NULLS
         return NULL;
       to++;
     }
@@ -1333,33 +1229,24 @@ uchar*
 Encode_key_for_group_concat::make_encoded_record(Sort_keys *sort_keys,
                                                  bool exclude_nulls)
 {
-  Field *field;
-  SORT_FIELD *sort_field;
-  uint length;
-  uchar *orig_to, *to;
+  uchar *to= rec_ptr + Variable_size_keys_descriptor::SIZE_OF_LENGTH_FIELD;
 
-  orig_to= to= rec_ptr;
-  to+= Variable_size_keys_descriptor::SIZE_OF_LENGTH_FIELD;
-
-  for (sort_field=sort_keys->begin() ;
-       sort_field != sort_keys->end() ;
+  for (SORT_FIELD *sort_field= sort_keys->begin();
+       sort_field != sort_keys->end();
        sort_field++)
   {
-    bool maybe_null=0;
     DBUG_ASSERT(sort_field->field);
-    field=sort_field->field;
-    length= field->make_packed_key_part(to, sort_field);
+    uint length= sort_field->field->make_packed_key_part(to, sort_field);
 
-    if ((maybe_null= sort_field->maybe_null))
+    if (sort_field->maybe_null)
     {
-      if (exclude_nulls && length == 0)  // rejecting NULLS
+      if (!length && exclude_nulls)  // rejecting NULLS
         return NULL;
       to++;
     }
     to+= length;
   }
 
-  length= static_cast<uint>(to - orig_to);
-  Variable_size_keys_descriptor::store_packed_length(orig_to, length);
+  Variable_size_keys_descriptor::store_packed_length(rec_ptr, to - rec_ptr);
   return rec_ptr;
 }

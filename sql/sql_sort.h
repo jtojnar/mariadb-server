@@ -326,7 +326,6 @@ public:
   bool is_parameters_computed() const { return parameters_computed; }
   void set_parameters_computed(bool val) { parameters_computed= val; }
   int compare_keys(const uchar *a, const uchar *b) const;
-  int compare_keys_for_single_arg(const uchar *a, const uchar *b) const;
 
   static const uint SIZE_OF_LENGTH_FIELD= 4;
 
