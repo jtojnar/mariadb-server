@@ -1582,7 +1582,7 @@ public:
 
 uint get_offset_to_value(Field *field)
 {
-  return Variable_size_keys_descriptor::size_of_length_field +
+  return Variable_size_keys_descriptor::SIZE_OF_LENGTH_FIELD +
          MY_TEST(field->maybe_null());
 }
 
@@ -1778,7 +1778,7 @@ public:
   uint compute_packable_length(Field *field)
   {
     return table_field->max_packed_col_length(table_field->pack_length()) +
-           Variable_size_keys_descriptor::size_of_length_field +
+           Variable_size_keys_descriptor::SIZE_OF_LENGTH_FIELD +
            MY_TEST(table_field->maybe_null());
   }
 

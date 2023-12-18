@@ -239,13 +239,13 @@ public:
   // returns the length of the key along with the length bytes for the key
   static uint read_packed_length(uchar *p)
   {
-    return size_of_length_field + uint4korr(p);
+    return SIZE_OF_LENGTH_FIELD + uint4korr(p);
   }
   static void store_packed_length(uchar *p, uint sz)
   {
-    int4store(p, sz - size_of_length_field);
+    int4store(p, sz - SIZE_OF_LENGTH_FIELD);
   }
-  static const uint size_of_length_field= 4;
+  static const uint SIZE_OF_LENGTH_FIELD= 4;
 };
 
 

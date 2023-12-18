@@ -974,8 +974,8 @@ bool Variable_size_keys_descriptor::setup_for_field(THD *thd, Field *field)
 int Variable_size_composite_key_desc::compare_keys(uchar *a_ptr,
                                                    uchar *b_ptr) const
 {
-  uchar *a= a_ptr + Variable_size_keys_descriptor::size_of_length_field;
-  uchar *b= b_ptr + Variable_size_keys_descriptor::size_of_length_field;
+  uchar *a= a_ptr + SIZE_OF_LENGTH_FIELD;
+  uchar *b= b_ptr + SIZE_OF_LENGTH_FIELD;
   int retval= 0;
   size_t a_len, b_len;
   for (SORT_FIELD *sort_field= sort_keys->begin();
@@ -998,8 +998,8 @@ int Variable_size_composite_key_desc::compare_keys(uchar *a_ptr,
 int Variable_size_composite_key_desc_for_gconcat::compare_keys(uchar *a_ptr,
                                                                uchar *b_ptr) const
 {
-  uchar *a= a_ptr + Variable_size_keys_descriptor::size_of_length_field;
-  uchar *b= b_ptr + Variable_size_keys_descriptor::size_of_length_field;
+  uchar *a= a_ptr + SIZE_OF_LENGTH_FIELD;
+  uchar *b= b_ptr + SIZE_OF_LENGTH_FIELD;
   int retval= 0;
   size_t a_len, b_len;
   for (SORT_FIELD *sort_field= sort_keys->begin();
@@ -1021,8 +1021,8 @@ int Variable_size_composite_key_desc_for_gconcat::compare_keys(uchar *a_ptr,
 
 int Variable_size_keys_simple::compare_keys(uchar *a, uchar *b) const
 {
-  return sort_keys->compare_keys_for_single_arg(a + size_of_length_field,
-                                                b + size_of_length_field);
+  return sort_keys->compare_keys_for_single_arg(a + SIZE_OF_LENGTH_FIELD,
+                                                b + SIZE_OF_LENGTH_FIELD);
 }
 
 
@@ -1291,7 +1291,7 @@ uchar* Encode_variable_size_key::make_encoded_record(Sort_keys *sort_keys,
   SORT_FIELD *sort_field;
   uchar *to= rec_ptr;
 
-  to+= Variable_size_keys_descriptor::size_of_length_field;
+  to+= Variable_size_keys_descriptor::SIZE_OF_LENGTH_FIELD;
 
   for (sort_field=sort_keys->begin() ;
        sort_field != sort_keys->end() ;
@@ -1335,7 +1335,7 @@ Encode_key_for_group_concat::make_encoded_record(Sort_keys *sort_keys,
   uchar *orig_to, *to;
 
   orig_to= to= rec_ptr;
-  to+= Variable_size_keys_descriptor::size_of_length_field;
+  to+= Variable_size_keys_descriptor::SIZE_OF_LENGTH_FIELD;
 
   for (sort_field=sort_keys->begin() ;
        sort_field != sort_keys->end() ;

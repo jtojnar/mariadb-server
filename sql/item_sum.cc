@@ -3931,7 +3931,7 @@ Item_func_group_concat::dump_leaf_variable_sized_key(
   uint old_length= result->length();
 
   key_end= key + item->unique_filter->get_full_size();
-  key+= Variable_size_keys_descriptor::size_of_length_field;
+  key+= Variable_size_keys_descriptor::SIZE_OF_LENGTH_FIELD;
 
   ulonglong *offset_limit= &item->copy_offset_limit;
   ulonglong *row_limit = &item->copy_row_limit;
@@ -4782,7 +4782,7 @@ bool Item_sum::is_packing_allowed(TABLE *table, uint* total_length)
     Unique::size_of_lengt_field is the length bytes to store the packed length
     for each record inserted in the Unique tree
   */
-  (*total_length)+= Variable_size_keys_descriptor::size_of_length_field +
+  (*total_length)+= Variable_size_keys_descriptor::SIZE_OF_LENGTH_FIELD +
                     size_of_packable_fields;
   return true;
 }
