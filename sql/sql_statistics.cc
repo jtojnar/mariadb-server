@@ -1921,7 +1921,7 @@ public:
 
   Count_distinct_field_bit(Field *field): Count_distinct_field(field){}
 
-  bool add()
+  bool add() override
   {
     longlong val= table_field->val_int();
     return tree->unique_add(&val, false);
@@ -1932,36 +1932,12 @@ public:
     Keys_descriptor *desc= new Fixed_size_keys_mem_comparable(tree_key_length);
     if (!desc)
       return true;
-    tree= new Unique((qsort_cmp2) simple_ulonglong_key_cmp,
+    tree= new Unique((qsort_cmp2) Count_distinct_field::key_cmp,
                      (void*) this,
                      tree_key_length, max_heap_table_size, 1, desc);
     return tree == NULL;
   }
-  static int simple_ulonglong_key_cmp(void* arg, uchar* key1, uchar* key2);
 };
-
-
-/*
-  @brief
-    Compare function for Bit fields
-
-  @param    arg     Pointer to the relevant class instance
-  @param    key1    left key image
-  @param    key2    right key image
-
-
-  @return   comparison result
-    @retval < 0       if key1 < key2
-    @retval = 0       if key1 = key2
-    @retval > 0       if key1 > key2
-*/
-int Count_distinct_field_bit::simple_ulonglong_key_cmp(void* arg,
-                                                       uchar* key1,
-                                                       uchar* key2)
-{
-  Count_distinct_field_bit *compare_arg= (Count_distinct_field_bit*)arg;
-  return compare_arg->tree->compare_keys(key1, key2);
-}
 
 
 /* 
