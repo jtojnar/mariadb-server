@@ -1317,6 +1317,7 @@ bool my_yyoverflow(short **a, YYSTYPE **b, size_t *yystacksize);
 
 %type <ident_sys>
         IDENT_sys
+        IDENT_funcname
         ident
         label_ident
         sp_decl_ident
@@ -1341,6 +1342,7 @@ bool my_yyoverflow(short **a, YYSTYPE **b, size_t *yystacksize);
         IDENT_cli
         ident_cli
         ident_cli_set_usual_case
+        ident_func
 
 %type <ident_sys_ptr>
         ident_sys_alloc
@@ -1355,6 +1357,7 @@ bool my_yyoverflow(short **a, YYSTYPE **b, size_t *yystacksize);
         keyword_sp_block_section
         keyword_sp_decl
         keyword_sp_head
+        keyword_funcname
         keyword_sp_var_and_label
         keyword_sp_var_not_label
         keyword_sysvar_name
@@ -10821,7 +10824,7 @@ function_call_conflict:
   in sql/item_create.cc
 */
 function_call_generic:
-          IDENT_sys '('
+          IDENT_funcname '('
           {
 #ifdef HAVE_DLOPEN
             udf_func *udf= 0;
@@ -15677,6 +15680,21 @@ IDENT_sys:
           }
         ;
 
+ident_func:
+          IDENT
+        | IDENT_QUOTED
+        | keyword_funcname { $$= $1; }
+        ;
+
+IDENT_funcname:
+          ident_func
+          {
+            if (unlikely(thd->to_ident_sys_alloc(&$$, &$1)))
+              MYSQL_YYABORT;
+          }
+        ;
+
+
 TEXT_STRING_sys:
           TEXT_STRING
           {
@@ -16075,15 +16093,53 @@ keyword_cast_type:
 
 
 /*
+  These keywords are fine for stored function names.
+*/
+keyword_funcname:
+        ACTION
+        | ACCOUNT_SYM
+        | ADMIN_SYM
+        | AFTER_SYM
+        | DISCARD
+        | DISK_SYM
+        | DUMPFILE
+        | DUPLICATE_SYM
+        | DYNAMIC_SYM
+        | EMPTY_SYM
+        | EXPIRE_SYM
+        | EXPORT_SYM
+        | EXTENDED_SYM
+        | EXTENT_SIZE_SYM
+        | FAULTS_SYM
+        | FAST_SYM
+        | FOUND_SYM
+        | ENABLE_SYM
+        | PROXY_SYM
+        | QUICK
+        | REBUILD_SYM
+        | RECOVER_SYM
+        | REDO_BUFFER_SIZE_SYM
+        | REDOFILE_SYM
+        | REDUNDANT_SYM
+        | RELAY
+        | RELAYLOG_SYM
+        | RELOAD
+        | REORGANIZE_SYM
+        | REPEATABLE_SYM
+        | REPLAY_SYM
+        | REPLICATION
+        | RESOURCES
+        | RESTART_SYM
+        | RESUME_SYM
+        | RETURNED_SQLSTATE_SYM
+        ;
+/*
   These keywords are fine for both SP variable names and SP labels.
 */
 keyword_sp_var_and_label:
-          ACTION
-        | ACCOUNT_SYM
+        keyword_funcname
         | ADDDATE_SYM
         | ADD_MONTHS_SYM
-        | ADMIN_SYM
-        | AFTER_SYM
         | AGAINST
         | AGGREGATE_SYM
         | ALGORITHM_SYM
@@ -16143,14 +16199,8 @@ keyword_sp_var_and_label:
         | DIAGNOSTICS_SYM
         | DIRECTORY_SYM
         | DISABLE_SYM
-        | DISCARD
-        | DISK_SYM
-        | DUMPFILE
-        | DUPLICATE_SYM
-        | DYNAMIC_SYM
         | ELSEIF_ORACLE_SYM
         | ELSIF_MARIADB_SYM
-        | EMPTY_SYM
         | ENDS_SYM
         | ENGINE_SYM
         | ENGINES_SYM
@@ -16163,14 +16213,6 @@ keyword_sp_var_and_label:
         | EXCEPTION_MARIADB_SYM
         | EXCHANGE_SYM
         | EXPANSION_SYM
-        | EXPIRE_SYM
-        | EXPORT_SYM
-        | EXTENDED_SYM
-        | EXTENT_SIZE_SYM
-        | FAULTS_SYM
-        | FAST_SYM
-        | FOUND_SYM
-        | ENABLE_SYM
         | FEDERATED_SYM
         | FULL
         | FILE_SYM
@@ -16301,31 +16343,13 @@ keyword_sp_var_and_label:
         | PROCESSLIST_SYM
         | PROFILE_SYM
         | PROFILES_SYM
-        | PROXY_SYM
         | QUARTER_SYM
         | QUERY_SYM
-        | QUICK
         | RAISE_MARIADB_SYM
         | READ_ONLY_SYM
-        | REBUILD_SYM
-        | RECOVER_SYM
-        | REDO_BUFFER_SIZE_SYM
-        | REDOFILE_SYM
-        | REDUNDANT_SYM
-        | RELAY
-        | RELAYLOG_SYM
         | RELAY_LOG_FILE_SYM
         | RELAY_LOG_POS_SYM
         | RELAY_THREAD
-        | RELOAD
-        | REORGANIZE_SYM
-        | REPEATABLE_SYM
-        | REPLAY_SYM
-        | REPLICATION
-        | RESOURCES
-        | RESTART_SYM
-        | RESUME_SYM
-        | RETURNED_SQLSTATE_SYM
         | RETURNS_SYM
         | REUSE_SYM
         | REVERSE_SYM
