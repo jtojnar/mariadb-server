@@ -118,7 +118,7 @@ public:
   virtual Sort_keys *get_keys() { return sort_keys; }
   SORT_FIELD *get_sortorder() { return sortorder; }
 
-  virtual uchar* make_record(bool exclude_nulls) { return NULL; }
+  virtual uchar* make_record(bool exclude_nulls) = 0;
   virtual bool is_single_arg() = 0;
   virtual bool init(THD *thd, uint count);
 };
@@ -138,6 +138,10 @@ public:
   bool setup_for_item(THD *thd, Item_sum *item,
                       uint non_const_args, uint arg_count) override;
   int compare_keys(const uchar *a, const uchar *b) const override;
+  virtual uchar* make_record(bool exclude_nulls) override {
+    DBUG_ASSERT(0);
+    return NULL;
+  }
   virtual bool is_single_arg() override { return true; }
 };
 

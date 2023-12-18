@@ -694,7 +694,6 @@ public:
       return group_concat_packed_key_cmp_with_distinct;
     return json_arrayagg_key_cmp_with_distinct;
   }
-
   qsort_cmp2 get_comparator_function_for_order_by() const override
   { return json_arrayagg_key_cmp_with_order; }
 
