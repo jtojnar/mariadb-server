@@ -2008,12 +2008,6 @@ protected:
                                              const void* key2);
   bool repack_tree(THD *thd);
 
-  /*
-    Says whether the function should skip NULL arguments
-    or add them to the result.
-    Redefined in JSON_ARRAYAGG.
-  */
-  virtual bool skip_nulls() const { return true; }
   virtual String *get_str_from_item(Item *i, String *tmp)
     { return i->val_str(tmp); }
   virtual String *get_str_from_field(Item *i, Field *f, String *tmp,
@@ -2024,6 +2018,7 @@ protected:
 
   virtual void cut_max_length(String *result,
                               uint old_length, uint max_length) const;
+  bool setup(THD *thd, bool exclude_nulls);
 public:
   // Methods used by ColumnStore
   bool get_distinct() const { return distinct; }
@@ -2057,7 +2052,7 @@ public:
   void clear() override;
   bool add() override
   {
-    return add(skip_nulls());
+    return add(true);
   }
   void reset_field() override { DBUG_ASSERT(0); }        // not used
   void update_field() override { DBUG_ASSERT(0); }       // not used
@@ -2103,8 +2098,8 @@ public:
   virtual qsort_cmp2 get_comparator_function_for_distinct(bool packed) const;
   virtual qsort_cmp2 get_comparator_function_for_order_by() const
   { return group_concat_key_cmp_with_order; }
-  uchar* get_record_pointer();
-  uint get_null_bytes();
+  virtual uchar* get_record_pointer() const;
+  virtual uint get_null_bytes() const;
   bool is_distinct_packed();
   bool is_packing_allowed(uint* total_length);
   static int dump_leaf_key(void* key_arg,
@@ -2113,8 +2108,7 @@ public:
   static int dump_leaf_variable_sized_key(void *key_arg,
                                           element_count __attribute__((unused)),
                                           void *item_arg);
-  int insert_record_to_unique();
-  int insert_packed_record_to_unique();
+  virtual int insert_record_to_unique(bool exclude_nulls);
   Keys_descriptor *get_descriptor_for_fixed_size_keys(uint args_count,
                                                       uint size_arg) override;
   Keys_descriptor *get_descriptor_for_variable_size_keys(uint args_count,

@@ -25,6 +25,7 @@
 #include "item_strfunc.h"      // Item_str_func
 #include "item_sum.h"
 #include "sql_type_json.h"
+#include "uniques.h"
 
 class json_path_with_flags
 {
@@ -637,11 +638,6 @@ public:
 class Item_func_json_arrayagg : public Item_func_group_concat
 {
 protected:
-  /*
-    Overrides Item_func_group_concat::skip_nulls()
-    NULL-s should be added to the result as JSON null value.
-  */
-  bool skip_nulls() const override { return false; }
   String *get_str_from_item(Item *i, String *tmp) override;
   String *get_str_from_field(Item *i, Field *f, String *tmp,
                              const uchar *key, size_t offset) override;
@@ -678,6 +674,19 @@ public:
   Item *get_copy(THD *thd) override
   { return get_item_copy<Item_func_json_arrayagg>(thd, this); }
 
+  bool setup(THD *thd) override
+  {
+    return Item_func_group_concat::setup(thd, false);
+  }
+  Keys_descriptor* get_descriptor_for_fixed_size_keys(uint args_count,
+                                                      uint size_arg) override
+  {
+    if (args_count == 1)
+      return new Fixed_size_keys_descriptor_with_nulls(size_arg);
+    // TODO(cvicentiu) QQ :( What? We are in JSON_arrayagg
+    return new Fixed_size_keys_for_group_concat(size_arg);
+  }
+
   qsort_cmp2 get_comparator_function_for_distinct(bool packed) const override
   {
     // TODO(cvicentiu) packed returns a group_concat function... Is this ok?
@@ -695,6 +704,16 @@ public:
   friend int json_arrayagg_key_cmp_with_order(void *arg,
                                               const void *key1,
                                               const void *key2);
+  bool add() override
+  {
+    return Item_func_group_concat::add(false);
+  }
+
+  virtual uchar* get_record_pointer() const override
+  { return table->record[0]; }
+
+  virtual uint get_null_bytes() const override
+  { return table->s->null_bytes; }
 
 };
 

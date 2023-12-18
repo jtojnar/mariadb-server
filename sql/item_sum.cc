@@ -4300,20 +4300,18 @@ bool Item_func_group_concat::add(bool exclude_nulls)
   String *res;
   bool row_eligible= TRUE;
 
+  copy_fields(tmp_table_param);
+  if (copy_funcs(tmp_table_param->items_to_copy, table->in_use))
+    return TRUE;
+
   if (distinct)
   {
     uint count= unique_filter->elements_in_tree();
-      int retval= insert_record_to_unique();
-      if (retval == -1)
-        return false;
+    int retval= insert_record_to_unique(exclude_nulls);
+    if (retval == -1) // Value skipped.
+      return FALSE;
     if (count == unique_filter->elements_in_tree())
       row_eligible= FALSE;
-  }
-  else
-  {
-    copy_fields(tmp_table_param);
-    if (copy_funcs(tmp_table_param->items_to_copy, table->in_use))
-      return TRUE;
   }
 
   if (!distinct || tree)
@@ -4437,8 +4435,12 @@ Item_func_group_concat::fix_fields(THD *thd, Item **ref)
   return FALSE;
 }
 
-
 bool Item_func_group_concat::setup(THD *thd)
+{
+  return setup(thd, true);
+}
+
+bool Item_func_group_concat::setup(THD *thd, bool exclude_nulls)
 {
   List<Item> list;
   SELECT_LEX *select_lex= thd->lex->current_select;
@@ -4465,7 +4467,7 @@ bool Item_func_group_concat::setup(THD *thd)
       DBUG_RETURN(TRUE);
     if (item->const_item())
     {
-      if (item->is_null() && skip_nulls())
+      if (item->is_null() && exclude_nulls)
       {
         always_null= 1;
         DBUG_RETURN(FALSE);
@@ -4661,11 +4663,9 @@ Item_func_group_concat::get_comparator_function_for_distinct(bool packed) const
     look at the comments for Item_func_group_concat::get_null_bytes
 */
 
-uchar* Item_func_group_concat::get_record_pointer()
+uchar* Item_func_group_concat::get_record_pointer() const
 {
-  return  skip_nulls() ?
-          table->record[0] + table->s->null_bytes :
-          table->record[0];
+  return  table->record[0] + table->s->null_bytes;
 }
 
 
@@ -4677,12 +4677,11 @@ uchar* Item_func_group_concat::get_record_pointer()
     This function is used for GROUP_CONCAT (or JSON_ARRAYAGG) implementation
     where the Unique tree or the ORDER BY tree may store the null values,
     in such case we also store the null bytes inside each node of the tree.
-
 */
 
-uint Item_func_group_concat::get_null_bytes()
+uint Item_func_group_concat::get_null_bytes() const
 {
-  return skip_nulls() ? 0 : table->s->null_bytes;
+  return 0;
 }
 
 
@@ -4891,14 +4890,10 @@ Item_func_group_concat::~Item_func_group_concat()
      1       error
 */
 
-int Item_func_group_concat::insert_record_to_unique()
+int Item_func_group_concat::insert_record_to_unique(bool exclude_nulls)
 {
-  copy_fields(tmp_table_param);
-  if (copy_funcs(tmp_table_param->items_to_copy, table->in_use))
-    return 1;
-
-  for (Field **field=table->field ; *field ; field++)
-    if (skip_nulls() && (*field)->is_real_null(0))
+  for (Field **field=table->field ; exclude_nulls && *field ; field++)
+    if ((*field)->is_real_null(0))
       return -1;         // Don't count NULL
 
   /*
@@ -4907,7 +4902,7 @@ int Item_func_group_concat::insert_record_to_unique()
     bloat the tree without providing any valuable info. Besides,
     key_length used to initialize the tree didn't include space for them.
   */
-  return unique_filter->unique_add(get_record_pointer(), skip_nulls());
+  return unique_filter->unique_add(get_record_pointer(), exclude_nulls);
 }
 
 
@@ -4935,10 +4930,8 @@ Keys_descriptor*
 Item_func_group_concat::get_descriptor_for_fixed_size_keys(uint args_count,
                                                            uint size_arg)
 {
-  if (args_count == 1 && !skip_nulls())
-    return new Fixed_size_keys_descriptor_with_nulls(size_arg);
-  else
-    return new Fixed_size_keys_for_group_concat(size_arg);
+  // TODO(cvicentiu) args_count is not used. Check if it's needed.
+  return new Fixed_size_keys_for_group_concat(size_arg);
 }
 
 

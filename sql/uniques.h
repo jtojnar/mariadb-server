@@ -421,12 +421,12 @@ public:
   ~Unique();
   ulong elements_in_tree() { return tree.elements_in_tree; }
 
-  bool unique_add(void *ptr, bool skip_nulls)
+  bool unique_add(void *ptr, bool exclude_nulls)
   {
     uchar *rec_ptr= (uchar *)ptr;
     if (is_variable_sized())
     {
-      rec_ptr= keys_descriptor->make_record(skip_nulls);
+      rec_ptr= keys_descriptor->make_record(exclude_nulls);
       if (!rec_ptr)
         return -1; // NULL value
     }
