@@ -606,11 +606,11 @@ public:
                              void *comp_func_fixed_arg,
                              uint size_arg, size_t max_in_memory_size_arg,
                              uint min_dupl_count_arg, bool allow_packing,
-                             uint number_of_args);
+                             uint number_of_args) const;
   virtual Keys_descriptor *get_descriptor_for_fixed_size_keys(uint args_count,
-                                                              uint size_arg);
+                                                              uint size_arg) const;
   virtual Keys_descriptor *get_descriptor_for_variable_size_keys(uint args_count,
-                                                                 uint size_arg);
+                                                                 uint size_arg) const;
 };
 
 
@@ -2110,9 +2110,9 @@ public:
                                           void *item_arg);
   virtual int insert_record_to_unique(bool exclude_nulls);
   Keys_descriptor *get_descriptor_for_fixed_size_keys(uint args_count,
-                                                      uint size_arg) override;
+                                                      uint size_arg) const override;
   Keys_descriptor *get_descriptor_for_variable_size_keys(uint args_count,
-                                                         uint size_arg) override;
+                                                         uint size_arg) const override;
 };
 
 #endif /* ITEM_SUM_INCLUDED */

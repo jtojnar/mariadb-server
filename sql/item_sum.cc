@@ -4810,7 +4810,7 @@ Unique*
 Item_sum::get_unique(qsort_cmp2 comp_func, void *comp_func_fixed_arg,
                      uint size_arg, size_t max_in_memory_size_arg,
                      uint min_dupl_count_arg, bool allow_packing,
-                     uint number_of_args)
+                     uint number_of_args) const
 {
   Keys_descriptor *desc;
 
@@ -4907,7 +4907,7 @@ int Item_func_group_concat::insert_record_to_unique(bool exclude_nulls)
 
 
 Keys_descriptor *Item_sum::get_descriptor_for_fixed_size_keys(uint args_count,
-                                                              uint size_arg)
+                                                              uint size_arg) const
 {
   if (args_count == 1)
     return new Fixed_size_keys_descriptor(size_arg);
@@ -4917,7 +4917,7 @@ Keys_descriptor *Item_sum::get_descriptor_for_fixed_size_keys(uint args_count,
 
 
 Keys_descriptor *Item_sum::get_descriptor_for_variable_size_keys(uint args_count,
-                                                                 uint size_arg)
+                                                                 uint size_arg) const
 {
   if (args_count == 1)
     return new Variable_size_keys_simple(size_arg);
@@ -4928,7 +4928,7 @@ Keys_descriptor *Item_sum::get_descriptor_for_variable_size_keys(uint args_count
 
 Keys_descriptor*
 Item_func_group_concat::get_descriptor_for_fixed_size_keys(uint args_count,
-                                                           uint size_arg)
+                                                           uint size_arg) const
 {
   // TODO(cvicentiu) args_count is not used. Check if it's needed.
   return new Fixed_size_keys_for_group_concat(size_arg);
@@ -4937,7 +4937,7 @@ Item_func_group_concat::get_descriptor_for_fixed_size_keys(uint args_count,
 
 Keys_descriptor*
 Item_func_group_concat::get_descriptor_for_variable_size_keys(uint args_count,
-                                                              uint size_arg)
+                                                              uint size_arg) const
 {
   if (args_count == 1)
     return new Variable_size_keys_simple(size_arg);
