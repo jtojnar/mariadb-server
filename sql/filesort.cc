@@ -2967,8 +2967,8 @@ inline int SORT_FIELD_ATTR::compare_null_flag(bool a_is_null, bool b_is_null)
   suffix_bytes are used only for binary columns.
 */
 
-int SORT_FIELD_ATTR::compare_packed_varstrings(uchar *a, size_t *a_len,
-                                               uchar *b, size_t *b_len) const
+int SORT_FIELD_ATTR::compare_packed_varstrings(const uchar *a, size_t *a_len,
+                                               const uchar *b, size_t *b_len) const
 {
   int retval;
   size_t a_length, b_length;
@@ -3033,7 +3033,7 @@ int SORT_FIELD_ATTR::compare_packed_varstrings(uchar *a, size_t *a_len,
 */
 
 int
-SORT_FIELD_ATTR::compare_packed_varstrings(uchar *a, uchar *b) const
+SORT_FIELD_ATTR::compare_packed_varstrings(const uchar *a, const uchar *b) const
 {
   size_t a_length, b_length;
   if (maybe_null)
@@ -3063,8 +3063,8 @@ SORT_FIELD_ATTR::compare_packed_varstrings(uchar *a, uchar *b) const
 */
 
 int
-SORT_FIELD_ATTR::compare_packed_fixed_size_vals(uchar *a, size_t *a_len,
-                                                uchar *b, size_t *b_len) const
+SORT_FIELD_ATTR::compare_packed_fixed_size_vals(const uchar *a, size_t *a_len,
+                                                const uchar *b, size_t *b_len) const
 {
   if (maybe_null)
   {
@@ -3110,8 +3110,8 @@ SORT_FIELD_ATTR::compare_packed_fixed_size_vals(uchar *a, size_t *a_len,
     <0   key a less than b
 */
 
-int SORT_FIELD::compare_fixed_size_vals(uchar *a, size_t *a_len,
-                                        uchar *b, size_t *b_len) const
+int SORT_FIELD::compare_fixed_size_vals(const uchar *a, size_t *a_len,
+                                        const uchar *b, size_t *b_len) const
 {
   if (maybe_null)
   {
@@ -3185,7 +3185,7 @@ int compare_packed_sort_keys(void *sort_param,
     <0   key a less than b
 */
 
-int Sort_keys::compare_keys(uchar *a, uchar *b)
+int Sort_keys::compare_keys(const uchar *a, const uchar *b) const
 {
   int retval= 0;
   size_t a_len, b_len;
@@ -3214,7 +3214,7 @@ int Sort_keys::compare_keys(uchar *a, uchar *b)
     =0   key a equal to b
     <0   key a less than b
 */
-int Sort_keys::compare_keys_for_single_arg(uchar *a, uchar *b)
+int Sort_keys::compare_keys_for_single_arg(const uchar *a, const uchar *b) const
 {
   SORT_FIELD *sort_field= begin();
 

@@ -278,7 +278,7 @@ public:
     size_of_packable_fields= len;
   }
 
-  uint get_size_of_packable_fields()
+  uint get_size_of_packable_fields() const
   {
     return size_of_packable_fields;
   }
@@ -288,7 +288,7 @@ public:
     sort_length_with_original_values= len;
   }
 
-  uint get_sort_length_with_original_values()
+  uint get_sort_length_with_original_values() const
   {
     return sort_length_with_original_values;
   }
@@ -298,7 +298,7 @@ public:
     sort_length_with_memcmp_values= len;
   }
 
-  uint get_sort_length_with_memcmp_values()
+  uint get_sort_length_with_memcmp_values() const
   {
     return sort_length_with_memcmp_values;
   }
@@ -323,10 +323,10 @@ public:
     sort_length_with_original_values+= len;
   }
 
-  bool is_parameters_computed() { return parameters_computed; }
+  bool is_parameters_computed() const { return parameters_computed; }
   void set_parameters_computed(bool val) { parameters_computed= val; }
-  int compare_keys(uchar *a, uchar *b);
-  int compare_keys_for_single_arg(uchar *a, uchar *b);
+  int compare_keys(const uchar *a, const uchar *b) const;
+  int compare_keys_for_single_arg(const uchar *a, const uchar *b) const;
 
   static const uint SIZE_OF_LENGTH_FIELD= 4;
 
