@@ -3913,9 +3913,10 @@ int Item_func_group_concat::dump_leaf_key(void* key_arg,
   Append data from current leaf of variable size to item->result.
 */
 int
-Item_func_group_concat::dump_leaf_variable_sized_key(void *key_arg,
-                                        element_count __attribute__((unused)),
-                                        void *item_arg)
+Item_func_group_concat::dump_leaf_variable_sized_key(
+  void *key_arg,
+  element_count __attribute__((unused)),
+  void *item_arg)
 {
   Item_func_group_concat *item= (Item_func_group_concat *) item_arg;
   TABLE *table= item->table;
@@ -3931,9 +3932,7 @@ Item_func_group_concat::dump_leaf_variable_sized_key(void *key_arg,
   Item **arg= item->args, **arg_end= item->args + item->arg_count_field;
 
   uint old_length= result->length();
-  SORT_FIELD *pos;
 
-  pos= item->unique_filter->get_sortorder();
   key_end= key + item->unique_filter->get_full_size();
   key+= Variable_size_keys_descriptor::size_of_length_field;
 
@@ -3961,7 +3960,7 @@ Item_func_group_concat::dump_leaf_variable_sized_key(void *key_arg,
 
   for (; arg < arg_end; arg++)
   {
-    String *res;
+    String *res= nullptr;
     /*
       We have to use get_tmp_table_field() instead of
       real_item()->get_tmp_table_field() because we want the field in
@@ -3973,35 +3972,30 @@ Item_func_group_concat::dump_leaf_variable_sized_key(void *key_arg,
       res= item->get_str_from_item(*arg, &tmp);
     else
     {
+      const uchar *next_key;
       Field *field= (*arg)->get_tmp_table_field();
-      if (field)
+      DBUG_ASSERT(field);
+      if (field->maybe_null())
       {
-        if (field->maybe_null())
+        if (*key == 0)
         {
-          if (*key == 0)
-          {
-            // Case with NULL value
-            field->set_null();
-            res= item->get_str_from_field(*arg, field, &tmp);
-            key++;
-          }
-          else
-          {
-            // Case with NOT NULL value
-            field->set_notnull();
-            const uchar *end= field->unpack(field->ptr, key+1, key_end, 0);
-            res= item->get_str_from_field(*arg, field, &tmp);
-            key= end;
-          }
+          // Case with NULL value
+          field->set_null();
+          next_key= key + 1;
         }
         else
         {
-          const uchar *end= field->unpack(field->ptr, key, key_end, 0);
-          res= item->get_str_from_field(*arg, field, &tmp);
-          key= end;
+          // Case with NOT NULL value
+          field->set_notnull();
+          next_key= field->unpack(field->ptr, key+1, key_end, 0);
         }
-        pos++;
       }
+      else
+      {
+        next_key= field->unpack(field->ptr, key, key_end, 0);
+      }
+      res= item->get_str_from_field(*arg, field, &tmp);
+      key= next_key;
     }
 
     if (res)
