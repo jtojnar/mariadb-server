@@ -107,7 +107,7 @@ public:
   {
     return keys_type == VARIABLE_SIZED_KEYS;
   }
-  virtual int compare_keys(uchar *a, uchar *b) = 0;
+  virtual int compare_keys(uchar *a, uchar *b) const = 0;
 
   // Fill structures like sort_keys, sortorder
   virtual bool setup_for_item(THD *thd, Item_sum *item,
@@ -137,7 +137,7 @@ public:
   bool setup_for_field(THD *thd, Field *field) override;
   bool setup_for_item(THD *thd, Item_sum *item,
                       uint non_const_args, uint arg_count) override;
-  virtual int compare_keys(uchar *a, uchar *b) override;
+  virtual int compare_keys(uchar *a, uchar *b) const override;
   virtual bool is_single_arg() override { return true; }
 };
 
@@ -151,7 +151,7 @@ public:
   Fixed_size_keys_mem_comparable(uint length)
     :Fixed_size_keys_descriptor(length) {}
   ~Fixed_size_keys_mem_comparable() {}
-  int compare_keys(uchar *a, uchar *b) override;
+  int compare_keys(uchar *a, uchar *b) const override;
 };
 
 
@@ -168,7 +168,7 @@ public:
     :Fixed_size_keys_descriptor(file_arg->ref_length), file(file_arg)
   { }
   ~Fixed_size_keys_for_rowids() {}
-  int compare_keys(uchar *a, uchar *b) override;
+  int compare_keys(uchar *a, uchar *b) const override;
 };
 
 
@@ -183,7 +183,7 @@ public:
   Fixed_size_keys_descriptor_with_nulls(uint length)
     : Fixed_size_keys_descriptor(length) {}
   ~Fixed_size_keys_descriptor_with_nulls() {}
-  int compare_keys(uchar *a, uchar *b) override;
+  int compare_keys(uchar *a, uchar *b) const override;
 };
 
 
@@ -196,7 +196,7 @@ public:
   Fixed_size_keys_for_group_concat(uint length)
     : Fixed_size_keys_descriptor(length) {}
   ~Fixed_size_keys_for_group_concat() {}
-  int compare_keys(uchar *a, uchar *b) override;
+  int compare_keys(uchar *a, uchar *b) const override;
 };
 
 
@@ -210,7 +210,7 @@ public:
   Fixed_size_composite_keys_descriptor(uint length)
     : Fixed_size_keys_descriptor(length) {}
   ~Fixed_size_composite_keys_descriptor() {}
-  int compare_keys(uchar *a, uchar *b) override;
+  int compare_keys(uchar *a, uchar *b) const override;
   bool is_single_arg() override { return false; }
 };
 
@@ -228,7 +228,7 @@ public:
   {
     return read_packed_length(ptr);
   }
-  virtual int compare_keys(uchar *a, uchar *b) override { return 0; }
+  virtual int compare_keys(uchar *a, uchar *b) const override { return 0; }
   virtual bool is_single_arg() override { return false; }
 
   virtual bool setup_for_item(THD *thd, Item_sum *item,
@@ -264,7 +264,7 @@ public:
   Variable_size_keys_simple(uint length)
     :Variable_size_keys_descriptor(length), Encode_variable_size_key() {}
   ~Variable_size_keys_simple() {}
-  int compare_keys(uchar *a, uchar *b) override;
+  int compare_keys(uchar *a, uchar *b) const override;
   uchar* make_record(bool exclude_nulls) override;
   uchar* get_rec_ptr() { return rec_ptr; }
   bool is_single_arg() override { return true; }
@@ -282,7 +282,7 @@ public:
   Variable_size_composite_key_desc(uint length)
     : Variable_size_keys_descriptor(length), Encode_variable_size_key() {}
   ~Variable_size_composite_key_desc() {}
-  int compare_keys(uchar *a, uchar *b) override;
+  int compare_keys(uchar *a, uchar *b) const override;
   uchar* make_record(bool exclude_nulls) override;
   bool init(THD *thd, uint count) override;
 };
@@ -301,7 +301,7 @@ public:
   Variable_size_composite_key_desc_for_gconcat(uint length)
     : Variable_size_keys_descriptor(length), Encode_key_for_group_concat() {}
   ~Variable_size_composite_key_desc_for_gconcat() {}
-  int compare_keys(uchar *a, uchar *b) override;
+  int compare_keys(uchar *a, uchar *b) const override;
   uchar* make_record(bool exclude_nulls) override;
   bool setup_for_item(THD *thd, Item_sum *item,
                       uint non_const_args, uint arg_count) override;
@@ -422,12 +422,19 @@ public:
   ~Unique();
   ulong elements_in_tree() { return tree.elements_in_tree; }
 
-  bool unique_add(void *ptr)
+  bool unique_add(void *ptr, bool skip_nulls)
   {
-    return unique_add(ptr, keys_descriptor->get_length_of_key((uchar*)ptr));
-  }
+    uchar *rec_ptr= (uchar *)ptr;
+    if (is_variable_sized())
+    {
+      rec_ptr= keys_descriptor->make_record(skip_nulls);
+      if (!rec_ptr)
+        return -1; // NULL value
+    }
 
-  Keys_descriptor *get_keys_descriptor() { return keys_descriptor; }
+    DBUG_ASSERT(keys_descriptor->get_length_of_key(rec_ptr) <= size);
+    return unique_add(rec_ptr, keys_descriptor->get_length_of_key(rec_ptr));
+  }
 
   bool is_in_memory() { return (my_b_tell(&file) == 0); }
   void close_for_expansion() { tree.flag= TREE_ONLY_DUPS; }
@@ -456,8 +463,7 @@ public:
   }
 
   void reset();
-  bool walk(TABLE *table, tree_walk_action action,
-            void *walk_action_arg);
+  bool walk(TABLE *table, tree_walk_action action, void *walk_action_arg);
 
   uint get_size() const { return size; }
   uint get_full_size() const { return full_size; }
@@ -471,6 +477,13 @@ public:
 
   // returns TRUE if the key to be inserted has only one component
   bool is_single_arg() { return keys_descriptor->is_single_arg(); }
+  int compare_keys(uchar *a, uchar *b) const
+  { return keys_descriptor->compare_keys(a, b); }
+  SORT_FIELD *get_sortorder() { return keys_descriptor->get_sortorder(); }
+
+ bool setup_for_item(THD *thd, Item_sum *item,
+                     uint non_const_args, uint arg_count)
+  { return keys_descriptor->setup_for_item(thd, item, non_const_args, arg_count); }
 
   friend int unique_write_to_file(uchar* key, element_count count,
                                   Unique *unique);

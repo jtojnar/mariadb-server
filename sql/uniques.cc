@@ -904,13 +904,15 @@ Variable_size_keys_descriptor::Variable_size_keys_descriptor(uint length)
 */
 
 bool
-Variable_size_keys_descriptor::setup_for_item(THD *thd, Item_sum *item,
-                                              uint non_const_args,
-                                              uint arg_count)
+Variable_size_keys_descriptor::setup_for_item(
+  THD *thd,
+  Item_sum *item,
+  uint non_const_args,
+  uint arg_count)
 {
-  SORT_FIELD *pos;
   if (init(thd, non_const_args))
     return true;
+  SORT_FIELD *pos;
   pos= sortorder;
 
   for (uint i= 0; i < arg_count; i++)
@@ -970,7 +972,7 @@ bool Variable_size_keys_descriptor::setup_for_field(THD *thd, Field *field)
 */
 
 int Variable_size_composite_key_desc::compare_keys(uchar *a_ptr,
-                                                uchar *b_ptr)
+                                                   uchar *b_ptr) const
 {
   uchar *a= a_ptr + Variable_size_keys_descriptor::size_of_length_field;
   uchar *b= b_ptr + Variable_size_keys_descriptor::size_of_length_field;
@@ -994,7 +996,7 @@ int Variable_size_composite_key_desc::compare_keys(uchar *a_ptr,
 
 
 int Variable_size_composite_key_desc_for_gconcat::compare_keys(uchar *a_ptr,
-                                                               uchar *b_ptr)
+                                                               uchar *b_ptr) const
 {
   uchar *a= a_ptr + Variable_size_keys_descriptor::size_of_length_field;
   uchar *b= b_ptr + Variable_size_keys_descriptor::size_of_length_field;
@@ -1017,7 +1019,7 @@ int Variable_size_composite_key_desc_for_gconcat::compare_keys(uchar *a_ptr,
 }
 
 
-int Variable_size_keys_simple::compare_keys(uchar *a, uchar *b)
+int Variable_size_keys_simple::compare_keys(uchar *a, uchar *b) const
 {
   return sort_keys->compare_keys_for_single_arg(a + size_of_length_field,
                                                 b + size_of_length_field);
@@ -1091,10 +1093,11 @@ bool Variable_size_keys_simple::init(THD *thd, uint count)
 
 
 bool
-Variable_size_composite_key_desc_for_gconcat::setup_for_item(THD *thd,
-                                                          Item_sum *item,
-                                                          uint non_const_args,
-                                                          uint arg_count)
+Variable_size_composite_key_desc_for_gconcat::setup_for_item(
+  THD *thd,
+  Item_sum *item,
+  uint non_const_args,
+  uint arg_count)
 {
   if (init(thd, non_const_args))
     return true;
@@ -1127,7 +1130,7 @@ Fixed_size_keys_descriptor::Fixed_size_keys_descriptor(uint length)
 }
 
 
-int Fixed_size_keys_descriptor::compare_keys(uchar *a, uchar *b)
+int Fixed_size_keys_descriptor::compare_keys(uchar *a, uchar *b) const
 {
   DBUG_ASSERT(sort_keys);
   SORT_FIELD *sort_field= sort_keys->begin();
@@ -1141,9 +1144,9 @@ Fixed_size_keys_descriptor::setup_for_item(THD *thd, Item_sum *item,
                                            uint non_const_args,
                                            uint arg_count)
 {
-  SORT_FIELD *pos;
   if (Keys_descriptor::init(thd, non_const_args))
     return true;
+  SORT_FIELD *pos;
   pos= sortorder;
 
   for (uint i= 0; i < arg_count; i++)
@@ -1175,14 +1178,14 @@ Fixed_size_keys_descriptor::setup_for_field(THD *thd, Field *field)
 }
 
 
-int Fixed_size_keys_mem_comparable::compare_keys(uchar *key1, uchar *key2)
+int Fixed_size_keys_mem_comparable::compare_keys(uchar *key1, uchar *key2) const
 {
   return memcmp(key1, key2, max_length);
 }
 
 
 int
-Fixed_size_composite_keys_descriptor::compare_keys(uchar *key1, uchar *key2)
+Fixed_size_composite_keys_descriptor::compare_keys(uchar *key1, uchar *key2) const
 {
   for (SORT_FIELD *sort_field= sort_keys->begin();
        sort_field != sort_keys->end(); sort_field++)
@@ -1198,7 +1201,7 @@ Fixed_size_composite_keys_descriptor::compare_keys(uchar *key1, uchar *key2)
 }
 
 
-int Fixed_size_keys_for_rowids::compare_keys(uchar *key1, uchar *key2)
+int Fixed_size_keys_for_rowids::compare_keys(uchar *key1, uchar *key2) const
 {
   return file->cmp_ref(key1, key2);
 }
@@ -1206,7 +1209,7 @@ int Fixed_size_keys_for_rowids::compare_keys(uchar *key1, uchar *key2)
 
 int
 Fixed_size_keys_descriptor_with_nulls::compare_keys(uchar *key1_arg,
-                                                    uchar *key2_arg)
+                                                    uchar *key2_arg) const
 {
 
   /*
@@ -1241,7 +1244,7 @@ Fixed_size_keys_descriptor_with_nulls::compare_keys(uchar *key1_arg,
 }
 
 
-int Fixed_size_keys_for_group_concat::compare_keys(uchar *key1, uchar *key2)
+int Fixed_size_keys_for_group_concat::compare_keys(uchar *key1, uchar *key2) const
 {
   for (SORT_FIELD *sort_field= sort_keys->begin();
        sort_field != sort_keys->end(); sort_field++)
@@ -1285,26 +1288,23 @@ Encode_key::~Encode_key()
 uchar* Encode_variable_size_key::make_encoded_record(Sort_keys *sort_keys,
                                                      bool exclude_nulls)
 {
-  Field *field;
   SORT_FIELD *sort_field;
-  uint length;
-  uchar *orig_to, *to;
+  uchar *to= rec_ptr;
 
-  orig_to= to= rec_ptr;
   to+= Variable_size_keys_descriptor::size_of_length_field;
 
   for (sort_field=sort_keys->begin() ;
        sort_field != sort_keys->end() ;
        sort_field++)
   {
+    uint length;
     bool maybe_null=0;
-    if ((field=sort_field->field))
-    {
-      // Field
-      length= field->make_packed_sort_key_part(to, sort_field);
+    if (sort_field->field)
+    { // Field
+      length= sort_field->field->make_packed_sort_key_part(to, sort_field);
     }
     else
-    {           // Item
+    { // Item
       Item *item= sort_field->item;
       length= item->type_handler()->make_packed_sort_key_part(to, item,
                                                               sort_field,
@@ -1320,8 +1320,7 @@ uchar* Encode_variable_size_key::make_encoded_record(Sort_keys *sort_keys,
     to+= length;
   }
 
-  length= static_cast<uint>(to - orig_to);
-  Variable_size_keys_descriptor::store_packed_length(orig_to, length);
+  Variable_size_keys_descriptor::store_packed_length(rec_ptr, to - rec_ptr);
   return rec_ptr;
 }
 

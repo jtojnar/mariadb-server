@@ -1816,7 +1816,7 @@ public:
                      max_heap_table_size, 1, desc);
     if (!tree)
       return true; // OOM
-    return tree->get_keys_descriptor()->setup_for_field(thd, table_field);
+    return desc->setup_for_field(thd, table_field);
   }
 
 
@@ -1828,14 +1828,7 @@ public:
   {
     table_field->mark_unused_memory_as_defined();
     DBUG_ASSERT(tree);
-    if (tree->is_variable_sized())
-    {
-      Keys_descriptor *descriptor= tree->get_keys_descriptor();
-      uchar *rec_ptr=  descriptor->make_record(true);
-      DBUG_ASSERT(descriptor->get_length_of_key(rec_ptr) <= tree->get_size());
-      return tree->unique_add(rec_ptr);
-    }
-    return tree->unique_add(table_field->ptr);
+    return tree->unique_add(table_field->ptr, true);
   }
 
   /*
@@ -1912,8 +1905,7 @@ int Count_distinct_field::key_cmp(void* arg,
                                   uchar* key2)
 {
   Count_distinct_field *compare_arg= (Count_distinct_field*)arg;
-  DBUG_ASSERT(compare_arg->tree->get_keys_descriptor());
-  return compare_arg->tree->get_keys_descriptor()->compare_keys(key1, key2);
+  return compare_arg->tree->compare_keys(key1, key2);
 }
 
 
@@ -1932,7 +1924,7 @@ public:
   bool add()
   {
     longlong val= table_field->val_int();
-    return tree->unique_add(&val);
+    return tree->unique_add(&val, false);
   }
   bool setup(THD *thd, size_t max_heap_table_size) override
   {
@@ -1968,8 +1960,7 @@ int Count_distinct_field_bit::simple_ulonglong_key_cmp(void* arg,
                                                        uchar* key2)
 {
   Count_distinct_field_bit *compare_arg= (Count_distinct_field_bit*)arg;
-  DBUG_ASSERT(compare_arg->tree->get_keys_descriptor());
-  return compare_arg->tree->get_keys_descriptor()->compare_keys(key1, key2);
+  return compare_arg->tree->compare_keys(key1, key2);
 }
 
 

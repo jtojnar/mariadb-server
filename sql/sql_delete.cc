@@ -766,7 +766,7 @@ bool mysql_delete(THD *thd, TABLE_LIST *table_list, COND *conds,
       if (record_should_be_deleted(thd, table, select, explain, delete_history))
       {
         table->file->position(table->record[0]);
-        if (unlikely((error= deltempfile->unique_add(table->file->ref))))
+        if (unlikely((error= deltempfile->unique_add(table->file->ref, false))))
         {
           error= 1;
           goto terminate_delete;
@@ -1423,7 +1423,7 @@ int multi_delete::send_data(List<Item> &values)
     }
     else
     {
-      error=tempfiles[secure_counter]->unique_add(table->file->ref);
+      error=tempfiles[secure_counter]->unique_add(table->file->ref, false);
       if (unlikely(error))
       {
 	error= 1;                               // Fatal error

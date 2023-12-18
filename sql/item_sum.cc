@@ -710,7 +710,7 @@ int Aggregator_distinct::key_cmp(void* arg, uchar* key1, uchar* key2)
 {
   Aggregator_distinct *aggr= (Aggregator_distinct *) arg;
   DBUG_ASSERT(aggr->tree);
-  return aggr->tree->get_keys_descriptor()->compare_keys(key1, key2);
+  return aggr->tree->compare_keys(key1, key2);
 }
 
 
@@ -890,9 +890,8 @@ bool Aggregator_distinct::setup(THD *thd)
         the server with a DoS attack
       */
       if (!tree ||
-          (tree->get_keys_descriptor()->setup_for_item(thd, item_sum,
-                                                  non_const_items,
-                                                  item_sum->get_arg_count())))
+          (tree->setup_for_item(thd, item_sum, non_const_items,
+                                item_sum->get_arg_count())))
         return TRUE;
     }
     return FALSE;
@@ -992,15 +991,6 @@ void Aggregator_distinct::clear()
 */
 int Aggregator_distinct::insert_record_to_unique()
 {
-  if (tree->is_variable_sized())
-  {
-    uchar *rec_ptr;
-    Keys_descriptor *descriptor= tree->get_keys_descriptor();
-    if ((rec_ptr= descriptor->make_record(true)) == NULL)
-      return -1; // NULL value
-    DBUG_ASSERT(descriptor->get_length_of_key(rec_ptr) <= tree->get_size());
-    return tree->unique_add(rec_ptr);
-  }
 
   copy_fields(tmp_table_param);
   if (copy_funcs(tmp_table_param->items_to_copy, table->in_use))
@@ -1017,7 +1007,8 @@ int Aggregator_distinct::insert_record_to_unique()
     key_length used to initialize the tree didn't include space for them.
   */
 
-  return tree->unique_add(table->record[0] + table->s->null_bytes);
+  // TODO(cvicentiu) nulls are already skipped.
+  return tree->unique_add(table->record[0] + table->s->null_bytes, false);
 }
 
 
@@ -1079,7 +1070,8 @@ bool Aggregator_distinct::add()
       '0' values are also stored in the tree. This doesn't matter
       for SUM(DISTINCT), but is important for AVG(DISTINCT)
     */
-    return tree->unique_add(table->field[0]->ptr);
+    // Nulls are already skipped.
+    return tree->unique_add(table->field[0]->ptr, false);
   }
 }
 
@@ -3642,8 +3634,7 @@ int group_concat_key_cmp_with_distinct_with_nulls(void* arg,
                                                   const void* key2)
 {
   Item_func_group_concat *item_func= (Item_func_group_concat*)arg;
-  return item_func->unique_filter->get_keys_descriptor()
-         ->compare_keys((uchar *)key1, (uchar *)key2);
+  return item_func->unique_filter->compare_keys((uchar *)key1, (uchar *)key2);
 }
 
 
@@ -3663,9 +3654,7 @@ int group_concat_packed_key_cmp_with_distinct(void *arg,
   Item_func_group_concat *item_func= (Item_func_group_concat*)arg;
 
   DBUG_ASSERT(item_func->unique_filter);
-  uchar *a= (uchar*)a_ptr;
-  uchar *b= (uchar*)b_ptr;
-  return item_func->unique_filter->get_keys_descriptor()->compare_keys(a, b);
+  return item_func->unique_filter->compare_keys((uchar *)a_ptr, (uchar *)b_ptr);
 }
 
 
@@ -3944,7 +3933,7 @@ Item_func_group_concat::dump_leaf_variable_sized_key(void *key_arg,
   uint old_length= result->length();
   SORT_FIELD *pos;
 
-  pos= item->unique_filter->get_keys_descriptor()->get_sortorder();
+  pos= item->unique_filter->get_sortorder();
   key_end= key + item->unique_filter->get_full_size();
   key+= Variable_size_keys_descriptor::size_of_length_field;
 
@@ -4595,9 +4584,9 @@ bool Item_func_group_concat::setup(THD *thd)
                              non_const_items);
 
     if (!unique_filter ||
-        (unique_filter->get_keys_descriptor()->setup_for_item(thd, this,
-                                                         non_const_items,
-                                                         arg_count_field)))
+        (unique_filter->setup_for_item(thd, this,
+                                       non_const_items,
+                                       arg_count_field)))
       DBUG_RETURN(TRUE);
   }
 
@@ -4928,9 +4917,6 @@ Item_func_group_concat::~Item_func_group_concat()
 
 int Item_func_group_concat::insert_record_to_unique()
 {
-  if (unique_filter->is_variable_sized() && unique_filter->is_single_arg())
-    return insert_packed_record_to_unique();
-
   copy_fields(tmp_table_param);
   if (copy_funcs(tmp_table_param->items_to_copy, table->in_use))
     return 1;
@@ -4945,33 +4931,7 @@ int Item_func_group_concat::insert_record_to_unique()
     bloat the tree without providing any valuable info. Besides,
     key_length used to initialize the tree didn't include space for them.
   */
-
-  if (unique_filter->is_variable_sized())
-    return insert_packed_record_to_unique();
-
-  return unique_filter->unique_add(get_record_pointer());
-}
-
-
-/*
-  @brief
-    Insert a packed record inside the Unique tree
-
-  @retval
-    -1       NULL value, record rejected
-     0       record successfully inserted into the tree
-     1       error
-*/
-
-int Item_func_group_concat::insert_packed_record_to_unique()
-{
-  Keys_descriptor *descriptor= unique_filter->get_keys_descriptor();
-  uchar *rec_ptr;
-  if ((rec_ptr= descriptor->make_record(skip_nulls())) == NULL)
-    return -1; // NULL value
-  DBUG_ASSERT(descriptor->get_length_of_key(rec_ptr)
-                        <= unique_filter->get_size());
-  return unique_filter->unique_add(rec_ptr);
+  return unique_filter->unique_add(get_record_pointer(), skip_nulls());
 }
 
 
