@@ -481,8 +481,8 @@ public:
   { return keys_descriptor->compare_keys(a, b); }
   SORT_FIELD *get_sortorder() { return keys_descriptor->get_sortorder(); }
 
- bool setup_for_item(THD *thd, Item_sum *item,
-                     uint non_const_args, uint arg_count)
+  bool setup_for_item(THD *thd, Item_sum *item,
+                      uint non_const_args, uint arg_count)
   { return keys_descriptor->setup_for_item(thd, item, non_const_args, arg_count); }
 
   friend int unique_write_to_file(uchar* key, element_count count,

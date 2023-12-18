@@ -221,7 +221,7 @@ public:
    */
   static uint read_addon_length(uchar *p)
   {
-    return size_of_length_field + uint2korr(p);
+    return SIZE_OF_LENGTH_FIELD + uint2korr(p);
   }
 
   /**
@@ -230,10 +230,10 @@ public:
   static void store_addon_length(uchar *p, uint sz)
   {
     // We actually store the length of everything *after* the length field.
-    int2store(p, sz - size_of_length_field);
+    int2store(p, sz - SIZE_OF_LENGTH_FIELD);
   }
 
-  static const uint size_of_length_field= 2;
+  static const uint SIZE_OF_LENGTH_FIELD= 2;
 
 private:
   Addon_fields_array m_field_descriptors;
@@ -305,12 +305,12 @@ public:
 
   static void store_sortkey_length(uchar *p, uint sz)
   {
-    int4store(p, sz - size_of_length_field);
+    int4store(p, sz - SIZE_OF_LENGTH_FIELD);
   }
 
   static uint read_sortkey_length(uchar *p)
   {
-    return size_of_length_field + uint4korr(p);
+    return SIZE_OF_LENGTH_FIELD + uint4korr(p);
   }
 
   void increment_size_of_packable_fields(uint len)
@@ -328,7 +328,7 @@ public:
   int compare_keys(uchar *a, uchar *b);
   int compare_keys_for_single_arg(uchar *a, uchar *b);
 
-  static const uint size_of_length_field= 4;
+  static const uint SIZE_OF_LENGTH_FIELD= 4;
 
 private:
   bool m_using_packed_sortkeys;     // Are we packing sort keys

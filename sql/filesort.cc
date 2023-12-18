@@ -140,7 +140,7 @@ void Sort_param::try_to_pack_addons(ulong max_length_for_sort_data)
   if (!Addon_fields::can_pack_addon_fields(res_length))
     return;
 
-  const uint sz= Addon_fields::size_of_length_field;
+  const uint sz= Addon_fields::SIZE_OF_LENGTH_FIELD;
 
   // Heuristic: skip packing if potential savings are less than 10 bytes.
   if (m_packable_length < (10 + sz))
@@ -1728,10 +1728,10 @@ ulong read_to_buffer(IO_CACHE *fromfile, Merge_chunk *buffpek,
       uchar *record= buffpek->buffer_start();
       uint ix= 0;
       uint size_of_addon_length= param->using_packed_addons()  ?
-                                 Addon_fields::size_of_length_field : 0;
+                                 Addon_fields::SIZE_OF_LENGTH_FIELD : 0;
 
       uint size_of_sort_length= param->using_packed_sortkeys() ?
-                                Sort_keys::size_of_length_field : 0;
+                                Sort_keys::SIZE_OF_LENGTH_FIELD : 0;
       uint size_of_dupl_count= param->min_dupl_count ?
                                sizeof(element_count) : 0;
 
@@ -2597,7 +2597,7 @@ void Sort_param::try_to_pack_sortkeys()
   if (size_of_packable_fields == 0)
     return;
 
-  const uint sz= Sort_keys::size_of_length_field;
+  const uint sz= Sort_keys::SIZE_OF_LENGTH_FIELD;
   uint sort_len= sort_keys->get_sort_length_with_original_values();
 
   /*
@@ -3156,8 +3156,8 @@ int compare_packed_sort_keys(void *sort_param,
   uchar *a= *a_ptr;
   uchar *b= *b_ptr;
 
-  if ((retval= sort_keys->compare_keys(a + Sort_keys::size_of_length_field,
-                                       b + Sort_keys::size_of_length_field)))
+  if ((retval= sort_keys->compare_keys(a + Sort_keys::SIZE_OF_LENGTH_FIELD,
+                                       b + Sort_keys::SIZE_OF_LENGTH_FIELD)))
     return retval;
 
   /*
@@ -3340,7 +3340,7 @@ static uint make_packed_sortkey(Sort_param *param, uchar *to)
   uint length;
   uchar *orig_to= to;
 
-  to+= Sort_keys::size_of_length_field;
+  to+= Sort_keys::SIZE_OF_LENGTH_FIELD;
 
   for (sort_field=param->local_sortorder.begin() ;
        sort_field != param->local_sortorder.end() ;
