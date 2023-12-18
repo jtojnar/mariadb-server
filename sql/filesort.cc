@@ -3010,51 +3010,6 @@ int SORT_FIELD_ATTR::compare_packed_varstrings(const uchar *a, size_t *a_len,
 
 
 /*
-  @brief
-    Compare two packed varstring
-
-  @param  a                 key to be compared
-  @param  b                 key to be compared
-
-  @details
-    This function compares packed values of two keys with a collation specific
-    comparison function.
-
-  @notes
-    This function basically does the same work as compare_packed_varstring
-    but the only difference is that this function is invoked when the key
-    has only one key part. This is currently used by Unique only as most
-    of the cases where Unique is used involves one key component.
-
-  @retval
-    >0   key a greater than b
-    =0   key a equal to b
-    <0   key a less than b
-*/
-
-int
-SORT_FIELD_ATTR::compare_packed_varstrings(const uchar *a, const uchar *b) const
-{
-  size_t a_length, b_length;
-  if (maybe_null)
-  {
-    int cmp_val;
-    if ((cmp_val= compare_null_flag(*a, *b)) || *a == 0)
-      return cmp_val;
-
-    a++;
-    b++;
-  }
-
-  a_length= read_keypart_length(a, length_bytes);
-  b_length= read_keypart_length(b, length_bytes);
-
-  return cs->strnncollsp(a + length_bytes, a_length,
-                         b + length_bytes, b_length);
-}
-
-
-/*
   A value comparison function that has a signature that's suitable for
   comparing packed values, but actually compares fixed-size values with memcmp.
 
