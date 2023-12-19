@@ -417,9 +417,20 @@ retry:
 	/* If there is a block in the free list, take it */
 	if ((block = buf_LRU_get_free_only()) != nullptr) {
 got_block:
+		const ulint available = UT_LIST_GET_LEN(buf_pool.free);
+		const ulint scan_depth = srv_LRU_scan_depth;
+
 		if (!have_mutex) {
 			mysql_mutex_unlock(&buf_pool.mutex);
 		}
+
+		if (UNIV_UNLIKELY(available < scan_depth)) {
+			mysql_mutex_lock(&buf_pool.flush_list_mutex);
+			buf_pool.page_cleaner_wakeup(available < scan_depth / 2
+						     ? -1 : 1);
+			mysql_mutex_unlock(&buf_pool.flush_list_mutex);
+		}
+
 		block->page.zip.clear();
 		return block;
 	}
@@ -449,7 +460,7 @@ got_block:
 		mysql_mutex_lock(&buf_pool.flush_list_mutex);
 		const auto n_flush = buf_pool.n_flush();
 		if (!buf_pool.try_LRU_scan) {
-			buf_pool.page_cleaner_wakeup(true);
+			buf_pool.page_cleaner_wakeup(-1);
 		}
 		mysql_mutex_unlock(&buf_pool.flush_list_mutex);
 		mysql_mutex_lock(&buf_pool.mutex);

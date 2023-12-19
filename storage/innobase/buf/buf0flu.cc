@@ -112,11 +112,11 @@ static void buf_flush_validate_skip()
 }
 #endif /* UNIV_DEBUG */
 
-void buf_pool_t::page_cleaner_wakeup(bool for_LRU)
+void buf_pool_t::page_cleaner_wakeup(int for_LRU)
 {
   if (!page_cleaner_idle())
   {
-    if (for_LRU)
+    if (for_LRU < 0)
       /* Ensure that the page cleaner is not in a timed wait. */
       pthread_cond_signal(&do_flush_list);
     return;

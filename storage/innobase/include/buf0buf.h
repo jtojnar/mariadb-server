@@ -1781,7 +1781,7 @@ public:
 
   /** Wake up the page cleaner if needed.
   @param for_LRU  whether to wake up for LRU eviction */
-  void page_cleaner_wakeup(bool for_LRU= false);
+  void page_cleaner_wakeup(int for_LRU= 0);
 
   /** Register whether an explicit wakeup of the page cleaner is needed */
   void page_cleaner_set_idle(bool deep_sleep)
