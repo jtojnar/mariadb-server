@@ -43,6 +43,7 @@ public:
     return bit;
   }
   int operator++(int) { return next_bit(); }
+  operator uint() const { return my_find_first_bit(bmp); }
   enum { BITMAP_END= 64 };
 };
 
@@ -284,6 +285,8 @@ public:
     Table_map_iterator tmi;
   public:
     Iterator(const Bitmap<width>& map2) : map(map2), offset(0), tmi(map2.buffer[0]) {}
+    static Iterator end(const Bitmap& map)
+    { Iterator it(map); it.offset= map.length(); return it; }
     int operator++(int)
     {
       for (;;)
@@ -300,8 +303,30 @@ public:
         tmi= Table_map_iterator(map.buffer[offset / BITS_PER_ELEMENT]);
       }
     }
-    enum { BITMAP_END = width };
+    uint operator++()
+    {
+      return (*this)++;
+    }
+    enum Bitmap_end { BITMAP_END = width };
+
+    bool operator == (const Iterator &it) const
+    {
+      DBUG_ASSERT(&map == &it.map);
+      return it.offset == map.length() ? offset == map.length()
+             : it.offset == offset && (uint)it.tmi == tmi;
+    }
+    bool operator !=(const Iterator &it) const
+    {
+      return !(*this == it);
+    }
+    uint operator*() const
+    {
+      return offset + tmi;
+    }
   };
+
+  Iterator begin() const { return Iterator(*this); }
+  Iterator end() const { return Iterator::end(*this); }
 
 #ifdef NEED_GCC_NO_SSE_WORKAROUND
 #pragma GCC pop_options

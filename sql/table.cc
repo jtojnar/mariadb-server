@@ -1489,9 +1489,7 @@ void TABLE::find_constraint_correlated_indexes()
     if (constraint_dependent_keys.bits_set() <= 1)
       continue;
 
-    uint key_no= 0;
-    key_map::Iterator ki(constraint_dependent_keys);
-    while ((key_no= ki++) != key_map::Iterator::BITMAP_END)
+    for (uint key_no: constraint_dependent_keys)
       key_info[key_no].constraint_correlated.merge(constraint_dependent_keys);
   }
 }
@@ -8921,8 +8919,7 @@ void TABLE::period_prepare_autoinc()
   if (!found_next_number_field)
     return;
   
-  key_map::Iterator it(found_next_number_field->part_of_key_not_clustered);
-  for (uint i; (i= it++) != key_map::Iterator::BITMAP_END;)
+  for (int i: found_next_number_field->part_of_key_not_clustered)
   {
     KEY &key= key_info[i];
     if (key.without_overlaps)

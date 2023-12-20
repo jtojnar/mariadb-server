@@ -8599,9 +8599,7 @@ SEL_TREE *Item_equal::get_mm_tree(RANGE_OPT_PARAM *param, Item **cond_ptr)
 static bool is_field_an_unique_index(Field *field)
 {
   DBUG_ENTER("is_field_an_unique_index");
-  key_map::Iterator it(field->key_start);
-  uint key_no;
-  while ((key_no= it++) != key_map::Iterator::BITMAP_END)
+  for (uint key_no: field->key_start)
   {
     KEY *key_info= &field->table->key_info[key_no];
     if (key_info->user_defined_key_parts == 1 &&
@@ -9204,9 +9202,7 @@ int and_range_trees(RANGE_OPT_PARAM *param, SEL_TREE *tree1, SEL_TREE *tree2,
   result_keys.clear_all();
   key_map anded_keys= tree1->keys_map;
   anded_keys.merge(tree2->keys_map);
-  int key_no;
-  key_map::Iterator it(anded_keys);
-  while ((key_no= it++) != key_map::Iterator::BITMAP_END)
+  for(uint key_no: anded_keys)
   {
     uint flag=0;
     SEL_ARG *key1= tree1->keys[key_no];
@@ -9450,9 +9446,7 @@ bool sel_trees_can_be_ored(RANGE_OPT_PARAM* param,
   DBUG_ENTER("sel_trees_can_be_ored");
   if (!sel_trees_have_common_keys(tree1, tree2, common_keys))
     DBUG_RETURN(FALSE);
-  int key_no;
-  key_map::Iterator it(*common_keys);
-  while ((key_no= it++) != key_map::Iterator::BITMAP_END)
+  for(uint key_no: *common_keys)
   {
     DBUG_ASSERT(tree1->keys[key_no] && tree2->keys[key_no]);
     /* Trees have a common key, check if they refer to the same key part */
@@ -9532,14 +9526,11 @@ bool sel_trees_must_be_ored(RANGE_OPT_PARAM* param,
   if (!tmp.is_clear_all())
     DBUG_RETURN(FALSE);
 
-  int idx1, idx2;
-  key_map::Iterator it1(oredable_keys);
-  while ((idx1= it1++) != key_map::Iterator::BITMAP_END)
+  for (uint idx1: oredable_keys)
   {
     KEY_PART *key1_init= param->key[idx1]+tree1->keys[idx1]->part;
     KEY_PART *key1_end= param->key[idx1]+tree1->keys[idx1]->max_part_no;
-    key_map::Iterator it2(oredable_keys);
-    while ((idx2= it2++) != key_map::Iterator::BITMAP_END)
+    for (uint idx2: oredable_keys)
     {
       if (idx2 <= idx1)
         continue;
@@ -9774,9 +9765,7 @@ tree_or(RANGE_OPT_PARAM *param,SEL_TREE *tree1,SEL_TREE *tree2)
       }
     }
 
-    key_map::Iterator it(ored_keys);
-    int key_no;
-    while ((key_no= it++) != key_map::Iterator::BITMAP_END)
+    for (uint key_no: ored_keys)
     {
       SEL_ARG *key1= tree1->keys[key_no];
       SEL_ARG *key2= tree2->keys[key_no];

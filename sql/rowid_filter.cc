@@ -345,10 +345,8 @@ get_max_range_rowid_filter_elems_for_table(
 
 void TABLE::init_cost_info_for_usable_range_rowid_filters(THD *thd)
 {
-  uint key_no;
   key_map usable_range_filter_keys;
   usable_range_filter_keys.clear_all();
-  key_map::Iterator it(opt_range_keys);
 
   if (file->ha_table_flags() & HA_NON_COMPARABLE_ROWID)
     return;                                     // Cannot create filtering
@@ -359,7 +357,7 @@ void TABLE::init_cost_info_for_usable_range_rowid_filters(THD *thd)
     - they are not clustered primary                                (2)
     - the range filter containers for them are not too large        (3)
   */
-  while ((key_no= it++) != key_map::Iterator::BITMAP_END)
+  for(uint key_no: opt_range_keys)
   {
     if (!(file->index_flags(key_no, 0, 1) & HA_DO_RANGE_FILTER_PUSHDOWN))  // !1
       continue;
@@ -400,8 +398,7 @@ void TABLE::init_cost_info_for_usable_range_rowid_filters(THD *thd)
   Range_rowid_filter_cost_info *curr_filter_cost_info=
                                                  range_rowid_filter_cost_info;
 
-  key_map::Iterator li(usable_range_filter_keys);
-  while ((key_no= li++) != key_map::Iterator::BITMAP_END)
+  for(uint key_no: usable_range_filter_keys)
   {
     *curr_ptr= curr_filter_cost_info;
     curr_filter_cost_info->init(SORTED_ARRAY_CONTAINER, this, key_no);
