@@ -1021,7 +1021,7 @@ CPP_UNNAMED_NS_END
   @param  length         fixed size of the sort column
 */
 
-void Field::make_sort_key_part(uchar *buff,uint length)
+void Field::make_sort_key_part(uchar *buff, uint length)
 {
   if (maybe_null())
   {

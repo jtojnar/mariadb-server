@@ -80,7 +80,7 @@ static void store_key_part_length(uint32 num, uchar *to, uint bytes)
 }
 
 
-static uint32 read_keypart_length(const uchar *from, uint bytes)
+static uint32 read_key_part_length(const uchar *from, uint bytes)
 {
   switch(bytes) {
   case 1: return from[0];
@@ -2806,7 +2806,7 @@ Type_handler_timestamp_common::make_packed_sort_key_part(uchar *to, Item *item,
    @details
      used for mem-comparable sort keys
 */
-
+static
 void reverse_key(uchar *to, const SORT_FIELD_ATTR *sort_field)
 {
   uint length;
@@ -2947,7 +2947,7 @@ qsort2_cmp get_packed_keys_compare_ptr()
     0      either key a and key b are both NULL or both are NOT NULL
 */
 
-inline int SORT_FIELD_ATTR::compare_null_flag(bool a_is_null, bool b_is_null)
+inline int SORT_FIELD::compare_null_flag(bool a_is_null, bool b_is_null)
 {
   if (a_is_null == b_is_null)
     return 0;
@@ -2967,7 +2967,7 @@ inline int SORT_FIELD_ATTR::compare_null_flag(bool a_is_null, bool b_is_null)
   suffix_bytes are used only for binary columns.
 */
 
-int SORT_FIELD_ATTR::compare_packed_varstrings(const uchar *a, size_t *a_len,
+int SORT_FIELD::compare_packed_varstrings(const uchar *a, size_t *a_len,
                                                const uchar *b, size_t *b_len) const
 {
   int retval;
@@ -2985,8 +2985,8 @@ int SORT_FIELD_ATTR::compare_packed_varstrings(const uchar *a, size_t *a_len,
   else
     *a_len= *b_len= 0;
 
-  a_length= read_keypart_length(a, length_bytes);
-  b_length= read_keypart_length(b, length_bytes);
+  a_length= read_key_part_length(a, length_bytes);
+  b_length= read_key_part_length(b, length_bytes);
 
   *a_len+= length_bytes + a_length;
   *b_len+= length_bytes + b_length;
@@ -3009,46 +3009,16 @@ int SORT_FIELD_ATTR::compare_packed_varstrings(const uchar *a, size_t *a_len,
 }
 
 
-/*
-  A value comparison function that has a signature that's suitable for
-  comparing packed values, but actually compares fixed-size values with memcmp.
-
-  This is used for ordering fixed-size columns when the sorting procedure used
-  packed-value format.
-*/
-
-int
-SORT_FIELD_ATTR::compare_packed_fixed_size_vals(const uchar *a, size_t *a_len,
-                                                const uchar *b, size_t *b_len) const
-{
-  if (maybe_null)
-  {
-    *a_len=1;
-    *b_len=1;
-    int cmp_val;
-    if ((cmp_val= compare_null_flag(*a, *b)) || *a == 0)
-      return cmp_val;
-
-    a++;
-    b++;
-  }
-  else
-    *a_len= *b_len= 0;
-
-  *a_len+= length;
-  *b_len+= length;
-  return memcmp(a, b, length);
-}
-
-
-int SORT_FIELD_ATTR::compare_keys(const uchar *a, size_t *a_len,
+int SORT_FIELD::compare_keys(const uchar *a, size_t *a_len,
                                   const uchar *b, size_t *b_len) const
 {
   if (is_variable_sized())
     return compare_packed_varstrings(a, a_len, b, b_len);
-  return compare_packed_fixed_size_vals(a, a_len, b, b_len);
+  return compare_fixed_size_vals(a, a_len, b, b_len);
 
 }
+
+
 
 
 /*
@@ -3189,7 +3159,7 @@ int Sort_keys::compare_keys(const uchar *a, const uchar *b) const
 
 uint
 SORT_FIELD_ATTR::pack_sort_string(uchar *to, const Binary_string *str,
-                                  CHARSET_INFO *cs) const
+                                  const CHARSET_INFO *cs) const
 {
   uchar *orig_to= to;
   uint32 length, data_length;

@@ -6991,20 +6991,10 @@ struct SORT_FIELD_ATTR
   CHARSET_INFO *cs;
   uint pack_sort_string(uchar *to, const Binary_string *str,
                         CHARSET_INFO *cs) const;
-  int compare_keys(const uchar *a, size_t *a_len,
-                   const uchar *b, size_t *b_len) const;
   bool check_if_packing_possible(THD *thd) const;
   bool is_variable_sized() const { return type == VARIABLE_SIZE; }
   void set_length_and_original_length(THD *thd, uint length_arg);
   void setup_key_part(Field *fld);
-
-  inline static int compare_null_flag(bool a_is_null, bool b_is_null);
-
-private:
-  int compare_packed_fixed_size_vals(const uchar *a, size_t *a_len,
-                                     const uchar *b, size_t *b_len) const;
-  int compare_packed_varstrings(const uchar *a, size_t *a_len,
-                                const uchar *b, size_t *b_len) const;
 };
 
 
@@ -7015,8 +7005,17 @@ struct SORT_FIELD: public SORT_FIELD_ATTR
   bool reverse;				/* if descending sort */
   void setup_key_part(Field *fld);
   void setup_key_part(Item *item);
+  int compare_keys(const uchar *a, size_t *a_len,
+                   const uchar *b, size_t *b_len) const;
+
+private:
   int compare_fixed_size_vals(const uchar *a, size_t *a_len,
                               const uchar *b, size_t *b_len) const;
+  int compare_packed_fixed_size_vals(const uchar *a, size_t *a_len,
+                                     const uchar *b, size_t *b_len) const;
+  int compare_packed_varstrings(const uchar *a, size_t *a_len,
+                                const uchar *b, size_t *b_len) const;
+  inline static int compare_null_flag(bool a_is_null, bool b_is_null);
 };
 
 
