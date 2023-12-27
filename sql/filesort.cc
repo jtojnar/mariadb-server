@@ -3041,6 +3041,16 @@ SORT_FIELD_ATTR::compare_packed_fixed_size_vals(const uchar *a, size_t *a_len,
 }
 
 
+int SORT_FIELD_ATTR::compare_keys(const uchar *a, size_t *a_len,
+                                  const uchar *b, size_t *b_len) const
+{
+  if (is_variable_sized())
+    return compare_packed_varstrings(a, a_len, b, b_len);
+  return compare_packed_fixed_size_vals(a, a_len, b, b_len);
+
+}
+
+
 /*
   @brief
     Comparison function to compare fixed size key parts via Field::cmp
@@ -3146,9 +3156,7 @@ int Sort_keys::compare_keys(const uchar *a, const uchar *b) const
   size_t a_len, b_len;
   for (SORT_FIELD *sort_field= begin(); sort_field != end(); sort_field++)
   {
-    retval= sort_field->is_variable_sized() ?
-            sort_field->compare_packed_varstrings(a, &a_len, b, &b_len) :
-            sort_field->compare_packed_fixed_size_vals(a, &a_len, b, &b_len);
+    retval= sort_field->compare_keys(a, &a_len, b, &b_len);
 
     if (retval)
       return sort_field->reverse ? -retval : retval;

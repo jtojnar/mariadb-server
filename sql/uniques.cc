@@ -899,51 +899,19 @@ Variable_size_keys_descriptor::Variable_size_keys_descriptor(uint length)
 
 */
 
-int Variable_size_composite_key_desc::compare_keys(const uchar *a_ptr,
-                                                   const uchar *b_ptr) const
+int Variable_size_composite_key_desc::compare_keys(const uchar *a,
+                                                   const uchar *b) const
 {
-  const uchar *a= a_ptr + SIZE_OF_LENGTH_FIELD;
-  const uchar *b= b_ptr + SIZE_OF_LENGTH_FIELD;
-  int retval= 0;
-  size_t a_len, b_len;
-  for (SORT_FIELD *sort_field= sort_keys->begin();
-       sort_field != sort_keys->end(); sort_field++)
-  {
-    retval= sort_field->is_variable_sized() ?
-            sort_field->compare_packed_varstrings(a, &a_len, b, &b_len) :
-            sort_field->compare_packed_fixed_size_vals(a, &a_len, b, &b_len);
-
-    if (retval)
-      return sort_field->reverse ? -retval : retval;
-
-    a+= a_len;
-    b+= b_len;
-  }
-  return retval;
+  return sort_keys->compare_keys(a + SIZE_OF_LENGTH_FIELD,
+                                 b + SIZE_OF_LENGTH_FIELD);
 }
 
 
-int Variable_size_composite_key_desc_for_gconcat::compare_keys(const uchar *a_ptr,
-                                                               const uchar *b_ptr) const
+int Variable_size_composite_key_desc_for_gconcat::compare_keys(const uchar *a,
+                                                               const uchar *b) const
 {
-  const uchar *a= a_ptr + SIZE_OF_LENGTH_FIELD;
-  const uchar *b= b_ptr + SIZE_OF_LENGTH_FIELD;
-  int retval= 0;
-  size_t a_len, b_len;
-  for (SORT_FIELD *sort_field= sort_keys->begin();
-       sort_field != sort_keys->end(); sort_field++)
-  {
-    retval= sort_field->is_variable_sized() ?
-            sort_field->compare_packed_varstrings(a, &a_len, b, &b_len) :
-            sort_field->compare_fixed_size_vals(a, &a_len, b, &b_len);
-
-    if (retval)
-      return sort_field->reverse ? -retval : retval;
-
-    a+= a_len;
-    b+= b_len;
-  }
-  return retval;
+  return sort_keys->compare_keys(a + SIZE_OF_LENGTH_FIELD,
+                                 b + SIZE_OF_LENGTH_FIELD);
 }
 
 
