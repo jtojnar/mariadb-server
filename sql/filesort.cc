@@ -3008,43 +3008,17 @@ int SORT_FIELD::compare_packed_varstrings(const uchar *a, size_t *a_len,
 
 
 int SORT_FIELD::compare_keys(const uchar *a, size_t *a_len,
-                                  const uchar *b, size_t *b_len) const
+                             const uchar *b, size_t *b_len) const
 {
   if (is_variable_sized())
     return compare_packed_varstrings(a, a_len, b, b_len);
-  return compare_fixed_size_vals(a, a_len, b, b_len);
+  return compare_packed_fixed_size_vals(a, a_len, b, b_len);
 
 }
 
 
-
-
-/*
-  @brief
-    Comparison function to compare fixed size key parts via Field::cmp
-
-  @param a                      key for comparison
-  @param b                      key for comparison
-  @param a_len [OUT]            length of the value for the key part in key a
-  @param b_len [OUT]            length of the value for the key part in key b
-
-  @details
-    A value comparison function that has a signature that's suitable for
-    comparing packed values, but actually compares fixed-size values with
-    Field::cmp.
-
-  @notes
-    This is used for ordering fixed-size columns when the keys are added
-    to the Unique tree
-
-  @retval
-    >0   key a greater than b
-    =0   key a equal to b
-    <0   key a less than b
-*/
-
-int SORT_FIELD::compare_fixed_size_vals(const uchar *a, size_t *a_len,
-                                        const uchar *b, size_t *b_len) const
+int SORT_FIELD::compare_packed_fixed_size_vals(const uchar *a, size_t *a_len,
+                                               const uchar *b, size_t *b_len) const
 {
   if (maybe_null)
   {
@@ -3059,9 +3033,10 @@ int SORT_FIELD::compare_fixed_size_vals(const uchar *a, size_t *a_len,
   }
   else
     *a_len= *b_len= 0;
+
   *a_len+= length;
   *b_len+= length;
-  return field->cmp(a, b);
+  return memcmp(a, b, length);
 }
 
 
