@@ -991,7 +991,7 @@ int Fixed_size_keys_descriptor::compare_keys(const uchar *a,
     if (res)
       return res;
     a += sort_field->length;
-    a += sort_field->length;
+    b += sort_field->length;
   }
   return 0;
 }
