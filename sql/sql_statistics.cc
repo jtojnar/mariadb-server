@@ -1802,7 +1802,7 @@ public:
     if (table_field->is_packable())
     {
       tree_key_length= compute_packable_length(table_field);
-      desc= new Variable_size_keys_simple(tree_key_length);
+      desc= new Variable_size_keys_descriptor(tree_key_length);
     }
     else
     {

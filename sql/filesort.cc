@@ -58,8 +58,6 @@ static void register_used_fields(Sort_param *param);
 static bool save_index(Sort_param *param, uint count,
                        SORT_INFO *table_sort);
 static uint suffix_length(ulong string_length);
-static uint sortlength(THD *thd, Sort_keys *sortorder,
-                       bool *allow_packing_for_sortkeys);
 static Addon_fields *get_addon_fields(TABLE *table, uint sortlength,
                                       uint *addon_length,
                                       uint *m_packable_length);
@@ -249,7 +247,7 @@ SORT_INFO *filesort(THD *thd, TABLE *table, Filesort *filesort,
   sort->found_rows= HA_POS_ERROR;
 
   param.sort_keys= sort_keys;
-  sort_len= sortlength(thd, sort_keys, &allow_packing_for_sortkeys);
+  sort_len= sort_keys->compute_sort_length(thd, &allow_packing_for_sortkeys);
   param.init_for_filesort(sort_len, table, max_rows, filesort);
   if (!param.accepted_rows)
     param.accepted_rows= &not_used;
@@ -2256,25 +2254,22 @@ Type_handler_decimal_result::sort_length(THD *thd,
     Total length of sort buffer in bytes
 */
 
-static uint
-sortlength(THD *thd, Sort_keys *sort_keys, bool *allow_packing_for_sortkeys)
+uint
+Sort_keys::compute_sort_length(THD *thd, bool *allow_packing_for_sortkeys)
 {
   uint length;
   *allow_packing_for_sortkeys= true;
-  bool allow_packing_for_keys= true;
 
   length=0;
   uint nullable_cols=0;
 
-  if (sort_keys->is_parameters_computed())
+  if (parameters_computed)
   {
-    *allow_packing_for_sortkeys= sort_keys->using_packed_sortkeys();
-    return sort_keys->get_sort_length_with_memcmp_values();
+    *allow_packing_for_sortkeys= m_using_packed_sortkeys;
+    return sort_length_with_memcmp_values;
   }
 
-  for (SORT_FIELD *sortorder= sort_keys->begin();
-       sortorder != sort_keys->end();
-       sortorder++)
+  for (SORT_FIELD *sortorder= begin(); sortorder != end(); sortorder++)
   {
     sortorder->suffix_length= 0;
     sortorder->length_bytes= 0;
@@ -2292,14 +2287,6 @@ sortlength(THD *thd, Sort_keys *sort_keys, bool *allow_packing_for_sortkeys)
       if (use_strnxfrm((cs=sortorder->field->sort_charset())))
         sortorder->length= (uint) cs->strnxfrmlen(sortorder->length);
 
-      if (sortorder->is_variable_sized() && allow_packing_for_keys)
-      {
-        allow_packing_for_keys= sortorder->check_if_packing_possible(thd);
-        sortorder->length_bytes=
-          number_storage_requirement(MY_MIN(sortorder->original_length,
-                                            thd->variables.max_sort_length));
-      }
-
       if ((sortorder->maybe_null= sortorder->field->maybe_null()))
         nullable_cols++;				// Place for NULL marker
     }
@@ -2311,17 +2298,19 @@ sortlength(THD *thd, Sort_keys *sort_keys, bool *allow_packing_for_sortkeys)
       sortorder->item->type_handler()->sort_length(thd, sortorder->item,
                                                    sortorder);
       sortorder->cs= sortorder->item->collation.collation;
-      if (sortorder->is_variable_sized() && allow_packing_for_keys)
-      {
-        allow_packing_for_keys= sortorder->check_if_packing_possible(thd);
-        sortorder->length_bytes=
-          number_storage_requirement(MY_MIN(sortorder->original_length,
-                                            thd->variables.max_sort_length));
-      }
 
       if ((sortorder->maybe_null= sortorder->item->maybe_null()))
         nullable_cols++;				// Place for NULL marker
     }
+
+    if (sortorder->is_variable_sized() && *allow_packing_for_sortkeys)
+    {
+      *allow_packing_for_sortkeys= sortorder->check_if_packing_possible(thd);
+      sortorder->length_bytes=
+        number_storage_requirement(MY_MIN(sortorder->original_length,
+                                          thd->variables.max_sort_length));
+    }
+
     if (sortorder->is_variable_sized())
     {
       set_if_smaller(sortorder->length, thd->variables.max_sort_length);
@@ -2330,16 +2319,15 @@ sortlength(THD *thd, Sort_keys *sort_keys, bool *allow_packing_for_sortkeys)
     DBUG_ASSERT(length < UINT_MAX32 - sortorder->length);
     length+= sortorder->length;
 
-    sort_keys->increment_size_of_packable_fields(sortorder->length_bytes);
-    sort_keys->increment_original_sort_length(sortorder->original_length);
+    size_of_packable_fields+= sortorder->length_bytes;
+    sort_length_with_original_values+= sortorder->original_length;
   }
   // add bytes for nullable_cols
-  sort_keys->increment_original_sort_length(nullable_cols);
-  *allow_packing_for_sortkeys= allow_packing_for_keys;
-  sort_keys->set_sort_length_with_memcmp_values(length + nullable_cols);
-  sort_keys->set_parameters_computed(true);
+  sort_length_with_original_values+= nullable_cols;
+  sort_length_with_memcmp_values= length + nullable_cols;
+  parameters_computed= true;
   DBUG_PRINT("info",("sort_length: %d",length));
-  return length + nullable_cols;
+  return sort_length_with_memcmp_values;
 }
 
 

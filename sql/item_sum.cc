@@ -4909,20 +4909,14 @@ int Item_func_group_concat::insert_record_to_unique(bool exclude_nulls)
 Keys_descriptor *Item_sum::get_descriptor_for_fixed_size_keys(uint args_count,
                                                               uint size_arg) const
 {
-  if (args_count == 1)
-    return new Fixed_size_keys_descriptor(size_arg);
-  else
-    return new Fixed_size_composite_keys_descriptor(size_arg);
+  return new Fixed_size_keys_descriptor(size_arg);
 }
 
 
 Keys_descriptor *Item_sum::get_descriptor_for_variable_size_keys(uint args_count,
                                                                  uint size_arg) const
 {
-  if (args_count == 1)
-    return new Variable_size_keys_simple(size_arg);
-  else
-    return new Variable_size_composite_key_desc(size_arg);
+  return new Variable_size_keys_descriptor(size_arg);
 }
 
 
@@ -4940,7 +4934,7 @@ Item_func_group_concat::get_descriptor_for_variable_size_keys(uint args_count,
                                                               uint size_arg) const
 {
   if (args_count == 1)
-    return new Variable_size_keys_simple(size_arg);
+    return new Variable_size_keys_descriptor(size_arg);
   else
     return new Variable_size_composite_key_desc_for_gconcat(size_arg);
 }

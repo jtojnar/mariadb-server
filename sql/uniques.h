@@ -199,24 +199,11 @@ public:
 
 
 /*
-  Keys_descriptor for fixed size keys with multiple key parts
-*/
-
-class Fixed_size_composite_keys_descriptor : public Fixed_size_keys_descriptor
-{
-public:
-  Fixed_size_composite_keys_descriptor(uint length)
-    : Fixed_size_keys_descriptor(length) {}
-  ~Fixed_size_composite_keys_descriptor() {}
-  int compare_keys(const uchar *a, const uchar *b) const override;
-};
-
-
-/*
   Base class for the descriptor for variable size keys
 */
 
-class Variable_size_keys_descriptor : public Keys_descriptor
+class Variable_size_keys_descriptor : public Keys_descriptor,
+                                      public Encode_variable_size_key
 {
 public:
   Variable_size_keys_descriptor(uint length);
@@ -237,45 +224,10 @@ public:
     int4store(p, sz - SIZE_OF_LENGTH_FIELD);
   }
   static const uint SIZE_OF_LENGTH_FIELD= 4;
-};
-
-
-/*
-  Keys_descriptor for variable size keys with only one component
-
-  Used by EITS, JSON_ARRAYAGG.
-  COUNT(DISTINCT col) AND GROUP_CONCAT(DISTINCT col) are also allowed
-  that the number of arguments with DISTINCT is 1.
-*/
-
-class Variable_size_keys_simple : public Variable_size_keys_descriptor,
-                                  public Encode_variable_size_key
-{
-public:
-  Variable_size_keys_simple(uint length)
-    :Variable_size_keys_descriptor(length), Encode_variable_size_key() {}
-  ~Variable_size_keys_simple() {}
   int compare_keys(const uchar *a, const uchar *b) const override;
   uchar* make_record(bool exclude_nulls) override;
   bool init(THD *thd, uint count) override;
 };
-
-
-/*
-  Keys_descriptor for variable sized keys with multiple key parts
-*/
-class Variable_size_composite_key_desc : public Variable_size_keys_descriptor,
-                                         public Encode_variable_size_key
-{
-public:
-  Variable_size_composite_key_desc(uint length)
-    : Variable_size_keys_descriptor(length), Encode_variable_size_key() {}
-  ~Variable_size_composite_key_desc() {}
-  int compare_keys(const uchar *a, const uchar *b) const override;
-  uchar* make_record(bool exclude_nulls) override;
-  bool init(THD *thd, uint count) override;
-};
-
 
 
 /*

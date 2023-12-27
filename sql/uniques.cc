@@ -885,6 +885,14 @@ Variable_size_keys_descriptor::Variable_size_keys_descriptor(uint length)
 }
 
 
+int Variable_size_composite_key_desc_for_gconcat::compare_keys(const uchar *a,
+                                                               const uchar *b) const
+{
+  return sort_keys->compare_keys(a + SIZE_OF_LENGTH_FIELD,
+                                 b + SIZE_OF_LENGTH_FIELD);
+}
+
+
 /*
   @brief
     Compare two packed keys inside the Unique tree
@@ -898,43 +906,21 @@ Variable_size_keys_descriptor::Variable_size_keys_descriptor(uint length)
     <0   key a_ptr less than b_ptr
 
 */
-
-int Variable_size_composite_key_desc::compare_keys(const uchar *a,
-                                                   const uchar *b) const
+int Variable_size_keys_descriptor::compare_keys(const uchar *a, const uchar *b) const
 {
   return sort_keys->compare_keys(a + SIZE_OF_LENGTH_FIELD,
                                  b + SIZE_OF_LENGTH_FIELD);
-}
-
-
-int Variable_size_composite_key_desc_for_gconcat::compare_keys(const uchar *a,
-                                                               const uchar *b) const
-{
-  return sort_keys->compare_keys(a + SIZE_OF_LENGTH_FIELD,
-                                 b + SIZE_OF_LENGTH_FIELD);
-}
-
-
-int Variable_size_keys_simple::compare_keys(const uchar *a, const uchar *b) const
-{
-  return sort_keys->compare_keys(a + SIZE_OF_LENGTH_FIELD,
-                                 b + SIZE_OF_LENGTH_FIELD);
-}
-
-
-uchar* Variable_size_composite_key_desc::make_record(bool exclude_nulls)
-{
-  return make_encoded_record(sort_keys, exclude_nulls);
 }
 
 uchar*
 Variable_size_composite_key_desc_for_gconcat::make_record(bool exclude_nulls)
 {
-  return make_encoded_record(sort_keys, exclude_nulls);
+  return Encode_key_for_group_concat::make_encoded_record(sort_keys,
+                                                          exclude_nulls);
 }
 
 
-uchar* Variable_size_keys_simple::make_record(bool exclude_nulls)
+uchar* Variable_size_keys_descriptor::make_record(bool exclude_nulls)
 {
   return make_encoded_record(sort_keys, exclude_nulls);
 }
@@ -967,7 +953,7 @@ bool Keys_descriptor::init(THD *thd, uint count)
 }
 
 
-bool Variable_size_composite_key_desc::init(THD *thd, uint count)
+bool Variable_size_keys_descriptor::init(THD *thd, uint count)
 {
   return Keys_descriptor::init(thd, count) ||
          Encode_variable_size_key::init(max_length);
@@ -978,13 +964,6 @@ bool Variable_size_composite_key_desc_for_gconcat::init(THD *thd, uint count)
 {
   return Keys_descriptor::init(thd, count) ||
          Encode_key_for_group_concat::init(max_length);
-}
-
-
-bool Variable_size_keys_simple::init(THD *thd, uint count)
-{
-  return Keys_descriptor::init(thd, count) ||
-         Encode_variable_size_key::init(max_length);
 }
 
 
@@ -999,12 +978,22 @@ Fixed_size_keys_descriptor::Fixed_size_keys_descriptor(uint length)
 }
 
 
-int Fixed_size_keys_descriptor::compare_keys(const uchar *a, const uchar *b) const
+int Fixed_size_keys_descriptor::compare_keys(const uchar *a,
+                                             const uchar *b) const
 {
   DBUG_ASSERT(sort_keys);
-  SORT_FIELD *sort_field= sort_keys->begin();
-  DBUG_ASSERT(sort_field->field);
-  return sort_field->field->cmp(a, b);
+  for (SORT_FIELD *sort_field= sort_keys->begin();
+       sort_field != sort_keys->end(); sort_field++)
+  {
+    DBUG_ASSERT(sort_field->field);
+    Field *field= sort_field->field;
+    int res = field->cmp(a, b);
+    if (res)
+      return res;
+    a += sort_field->length;
+    a += sort_field->length;
+  }
+  return 0;
 }
 
 
@@ -1050,24 +1039,6 @@ int Fixed_size_keys_mem_comparable::compare_keys(const uchar *key1,
                                                  const uchar *key2) const
 {
   return memcmp(key1, key2, max_length);
-}
-
-
-int
-Fixed_size_composite_keys_descriptor::compare_keys(const uchar *key1,
-                                                   const uchar *key2) const
-{
-  for (SORT_FIELD *sort_field= sort_keys->begin();
-       sort_field != sort_keys->end(); sort_field++)
-  {
-    Field *field= sort_field->field;
-    int res = field->cmp(key1, key2);
-    if (res)
-      return res;
-    key1 += sort_field->length;
-    key2 += sort_field->length;
-  }
-  return 0;
 }
 
 
