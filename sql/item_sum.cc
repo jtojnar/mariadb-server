@@ -4812,12 +4812,7 @@ Item_sum::get_unique(qsort_cmp2 comp_func, void *comp_func_fixed_arg,
                      uint min_dupl_count_arg, bool allow_packing,
                      uint number_of_args) const
 {
-  Keys_descriptor *desc;
-
-  if (allow_packing)
-    desc= get_descriptor_for_variable_size_keys(number_of_args, size_arg);
-  else
-    desc= get_descriptor_for_fixed_size_keys(number_of_args, size_arg);
+  Keys_descriptor *desc= get_keys_descriptor(size_arg, allow_packing);
 
   if (!desc)
     return NULL;
@@ -4906,35 +4901,21 @@ int Item_func_group_concat::insert_record_to_unique(bool exclude_nulls)
 }
 
 
-Keys_descriptor *Item_sum::get_descriptor_for_fixed_size_keys(uint args_count,
-                                                              uint size_arg) const
+Keys_descriptor *Item_sum::get_keys_descriptor(uint size_arg,
+                                               bool allow_packing) const
 {
+  if (allow_packing)
+    return new Variable_size_keys_descriptor(size_arg);
   return new Fixed_size_keys_descriptor(size_arg);
 }
 
 
-Keys_descriptor *Item_sum::get_descriptor_for_variable_size_keys(uint args_count,
-                                                                 uint size_arg) const
-{
-  return new Variable_size_keys_descriptor(size_arg);
-}
-
-
 Keys_descriptor*
-Item_func_group_concat::get_descriptor_for_fixed_size_keys(uint args_count,
-                                                           uint size_arg) const
+Item_func_group_concat::get_keys_descriptor(uint size_arg,
+                                            bool allow_packing) const
 {
+  if (allow_packing)
+    return new Variable_size_keys_descriptor(size_arg);
   // TODO(cvicentiu) args_count is not used. Check if it's needed.
   return new Fixed_size_keys_for_group_concat(size_arg);
-}
-
-
-Keys_descriptor*
-Item_func_group_concat::get_descriptor_for_variable_size_keys(uint args_count,
-                                                              uint size_arg) const
-{
-  if (args_count == 1)
-    return new Variable_size_keys_descriptor(size_arg);
-  else
-    return new Variable_size_composite_key_desc_for_gconcat(size_arg);
 }

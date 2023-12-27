@@ -678,10 +678,11 @@ public:
   {
     return Item_func_group_concat::setup(thd, false);
   }
-  Keys_descriptor* get_descriptor_for_fixed_size_keys(uint args_count,
-                                                      uint size_arg) const override
+  Keys_descriptor* get_keys_descriptor(uint size_arg,
+                                       bool allow_packing) const override
   {
-    DBUG_ASSERT(args_count == 1);
+    if (allow_packing)
+      return new Variable_size_keys_descriptor(size_arg);
     return new Fixed_size_keys_descriptor_with_nulls(size_arg);
   }
 
