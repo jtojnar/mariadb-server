@@ -905,17 +905,6 @@ int Variable_size_keys_descriptor::compare_keys(const uchar *a, const uchar *b) 
 }
 
 
-uchar* Variable_size_keys_descriptor::make_record()
-{
-  return make_encoded_record(sort_keys);
-}
-
-uchar* Variable_size_composite_key_desc_for_gconcat::make_record()
-{
-  return Encode_key_for_group_concat::make_encoded_record(sort_keys);
-}
-
-
 /*
   @brief
     Create the sortorder and Sort keys structures for a descriptor
@@ -945,16 +934,15 @@ bool Keys_descriptor::init(THD *thd, uint count)
 
 bool Variable_size_keys_descriptor::init(THD *thd, uint count)
 {
-  return Keys_descriptor::init(thd, count) ||
-         Encode_variable_size_key::init(max_length);
-}
+  bool result= Keys_descriptor::init(thd, count);
 
-bool Variable_size_composite_key_desc_for_gconcat::init(THD *thd, uint count)
-{
-  return Keys_descriptor::init(thd, count) ||
-         Encode_key_for_group_concat::init(max_length);
+  if (result || tmp_buffer.alloc(max_length))
+    return true;
+  rec_buf= (uchar *)my_malloc(PSI_INSTRUMENT_ME,
+                              max_length,
+                              MYF(MY_WME | MY_THREAD_SPECIFIC));
+  return rec_buf == NULL;
 }
-
 
 
 /*                   FIXED SIZE KEYS DESCRIPTOR                             */
@@ -1092,21 +1080,9 @@ int Fixed_size_keys_for_group_concat::compare_keys(const uchar *key1,
   return 0;
 }
 
-
-bool Encode_key::init(uint length)
+Variable_size_keys_descriptor::~Variable_size_keys_descriptor()
 {
-  if (tmp_buffer.alloc(length))
-    return true;
-  rec_ptr= (uchar *)my_malloc(PSI_INSTRUMENT_ME,
-                              length,
-                              MYF(MY_WME | MY_THREAD_SPECIFIC));
-  return rec_ptr == NULL;
-}
-
-
-Encode_key::~Encode_key()
-{
-  my_free(rec_ptr);
+  my_free(rec_buf);
 }
 
 
@@ -1118,9 +1094,13 @@ Encode_key::~Encode_key()
     0         NULL value
     >0        length of the packed record
 */
-uchar* Encode_variable_size_key::make_encoded_record(Sort_keys *sort_keys)
+uchar* Variable_size_keys_descriptor::create_keys_record(uchar *orig_record)
 {
-  uchar *to= rec_ptr + Variable_size_keys_descriptor::SIZE_OF_LENGTH_FIELD;
+  /*
+    TODO(cvicentiu) orig_record should be used instead of indirectly
+    going through sort_keys->fields|items.
+  */
+  uchar *to= rec_buf + Variable_size_keys_descriptor::SIZE_OF_LENGTH_FIELD;
 
   for (SORT_FIELD *sort_field= sort_keys->begin();
        sort_field != sort_keys->end();
@@ -1144,15 +1124,15 @@ uchar* Encode_variable_size_key::make_encoded_record(Sort_keys *sort_keys)
     to+= length;
   }
 
-  Variable_size_keys_descriptor::store_packed_length(rec_ptr, to - rec_ptr);
-  return rec_ptr;
+  Variable_size_keys_descriptor::store_packed_length(rec_buf, to - rec_buf);
+  return rec_buf;
 }
 
 
-uchar*
-Encode_key_for_group_concat::make_encoded_record(Sort_keys *sort_keys)
+uchar* Variable_size_composite_key_desc_for_gconcat::create_keys_record(
+  uchar *orig_record)
 {
-  uchar *to= rec_ptr + Variable_size_keys_descriptor::SIZE_OF_LENGTH_FIELD;
+  uchar *to= rec_buf + Variable_size_keys_descriptor::SIZE_OF_LENGTH_FIELD;
 
   for (SORT_FIELD *sort_field= sort_keys->begin();
        sort_field != sort_keys->end();
@@ -1166,6 +1146,6 @@ Encode_key_for_group_concat::make_encoded_record(Sort_keys *sort_keys)
     to+= length;
   }
 
-  Variable_size_keys_descriptor::store_packed_length(rec_ptr, to - rec_ptr);
-  return rec_ptr;
+  Variable_size_keys_descriptor::store_packed_length(rec_buf, to - rec_buf);
+  return rec_buf;
 }

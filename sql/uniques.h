@@ -23,55 +23,6 @@
 
 
 /*
-  Encode a key into a particular format. The format depends whether
-  the key is of fixed size or variable size.
-
-  @notes
-    Currently this encoding is only done for variable size keys
-*/
-
-class Encode_key
-{
-protected:
-  /*
-    Packed record ptr for a record of the table, the packed value in this
-    record is added to the unique tree
-  */
-  uchar* rec_ptr;
-
-  String tmp_buffer;
-public:
-  virtual ~Encode_key();
-  virtual uchar* make_encoded_record(Sort_keys *keys) = 0;
-  //virtual uchar* decode_record(Sort_keys *keys) = 0;
-  bool init(uint length);
-};
-
-
-class Encode_variable_size_key : public Encode_key
-{
-public:
-  Encode_variable_size_key()
-  {
-    rec_ptr= NULL;
-  }
-  virtual ~Encode_variable_size_key() {}
-  uchar* make_encoded_record(Sort_keys *keys) override;
-  //uchar* decode_record(Sort_keys *keys) override;
-};
-
-class Encode_key_for_group_concat : public Encode_variable_size_key
-{
-public:
-  Encode_key_for_group_concat() : Encode_variable_size_key(){}
-  ~Encode_key_for_group_concat() {}
-  uchar* make_encoded_record(Sort_keys *keys) override;
-  //uchar* decode_record(Sort_keys *keys) override;
-};
-
-
-
-/*
 
   Keys_descriptor class storing information about the keys that would be
   inserted in the Unique tree. This is an abstract class which is
@@ -120,7 +71,7 @@ public:
   Sort_keys *get_keys() { return sort_keys; }
   SORT_FIELD *get_sortorder() { return sortorder; }
 
-  virtual uchar* make_record() = 0;
+  virtual uchar* create_keys_record(uchar *original_record) = 0;
   virtual bool init(THD *thd, uint count);
 };
 
@@ -136,9 +87,9 @@ public:
   virtual ~Fixed_size_keys_descriptor() {}
   uint get_length_of_key(uchar *ptr) override { return max_length; }
   int compare_keys(const uchar *a, const uchar *b) const override;
-  virtual uchar* make_record() override {
-    DBUG_ASSERT(0);
-    return NULL;
+  uchar* create_keys_record(uchar *original_record) override
+  {
+    return original_record;
   }
 };
 
@@ -205,12 +156,14 @@ public:
   Base class for the descriptor for variable size keys
 */
 
-class Variable_size_keys_descriptor : public Keys_descriptor,
-                                      public Encode_variable_size_key
+class Variable_size_keys_descriptor : public Keys_descriptor
 {
+protected:
+  uchar *rec_buf;
+  String tmp_buffer;
 public:
   Variable_size_keys_descriptor(uint length);
-  virtual ~Variable_size_keys_descriptor() {}
+  ~Variable_size_keys_descriptor();
   uint get_length_of_key(uchar *ptr) override
   {
     return read_packed_length(ptr);
@@ -228,7 +181,7 @@ public:
   }
   static const uint SIZE_OF_LENGTH_FIELD= 4;
   int compare_keys(const uchar *a, const uchar *b) const override;
-  uchar* make_record() override;
+  uchar* create_keys_record(uchar *orig_record) override;
   bool init(THD *thd, uint count) override;
 };
 
@@ -238,15 +191,13 @@ public:
 */
 
 class Variable_size_composite_key_desc_for_gconcat :
-                                         public Variable_size_keys_descriptor,
-                                         public Encode_key_for_group_concat
+                                         public Variable_size_keys_descriptor
 {
 public:
   Variable_size_composite_key_desc_for_gconcat(uint length)
-    : Variable_size_keys_descriptor(length), Encode_key_for_group_concat() {}
+    : Variable_size_keys_descriptor(length) {}
   ~Variable_size_composite_key_desc_for_gconcat() {}
-  uchar* make_record() override;
-  bool init(THD *thd, uint count) override;
+  uchar* create_keys_record(uchar *orig_record) override;
 };
 
 /*
@@ -364,9 +315,7 @@ public:
 
   bool unique_add(uchar *ptr)
   {
-    uchar *rec_ptr= (uchar *)ptr;
-    if (is_variable_sized())
-      rec_ptr= keys_descriptor->make_record();
+    uchar *rec_ptr= keys_descriptor->create_keys_record(ptr);
     DBUG_ASSERT(rec_ptr);
     DBUG_ASSERT(keys_descriptor->get_length_of_key(rec_ptr) <= size);
     return unique_add(rec_ptr, keys_descriptor->get_length_of_key(rec_ptr));
