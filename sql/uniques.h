@@ -42,7 +42,8 @@ protected:
   String tmp_buffer;
 public:
   virtual ~Encode_key();
-  virtual uchar* make_encoded_record(Sort_keys *keys, bool exclude_nulls) = 0;
+  virtual uchar* make_encoded_record(Sort_keys *keys) = 0;
+  //virtual uchar* decode_record(Sort_keys *keys) = 0;
   bool init(uint length);
 };
 
@@ -55,17 +56,19 @@ public:
     rec_ptr= NULL;
   }
   virtual ~Encode_variable_size_key() {}
-  uchar* make_encoded_record(Sort_keys *keys, bool exclude_nulls) override;
+  uchar* make_encoded_record(Sort_keys *keys) override;
+  //uchar* decode_record(Sort_keys *keys) override;
 };
-
 
 class Encode_key_for_group_concat : public Encode_variable_size_key
 {
 public:
   Encode_key_for_group_concat() : Encode_variable_size_key(){}
   ~Encode_key_for_group_concat() {}
-  uchar* make_encoded_record(Sort_keys *keys, bool exclude_nulls) override;
+  uchar* make_encoded_record(Sort_keys *keys) override;
+  //uchar* decode_record(Sort_keys *keys) override;
 };
+
 
 
 /*
@@ -117,7 +120,7 @@ public:
   Sort_keys *get_keys() { return sort_keys; }
   SORT_FIELD *get_sortorder() { return sortorder; }
 
-  virtual uchar* make_record(bool exclude_nulls) = 0;
+  virtual uchar* make_record() = 0;
   virtual bool init(THD *thd, uint count);
 };
 
@@ -133,7 +136,7 @@ public:
   virtual ~Fixed_size_keys_descriptor() {}
   uint get_length_of_key(uchar *ptr) override { return max_length; }
   int compare_keys(const uchar *a, const uchar *b) const override;
-  virtual uchar* make_record(bool exclude_nulls) override {
+  virtual uchar* make_record() override {
     DBUG_ASSERT(0);
     return NULL;
   }
@@ -225,7 +228,7 @@ public:
   }
   static const uint SIZE_OF_LENGTH_FIELD= 4;
   int compare_keys(const uchar *a, const uchar *b) const override;
-  uchar* make_record(bool exclude_nulls) override;
+  uchar* make_record() override;
   bool init(THD *thd, uint count) override;
 };
 
@@ -242,11 +245,9 @@ public:
   Variable_size_composite_key_desc_for_gconcat(uint length)
     : Variable_size_keys_descriptor(length), Encode_key_for_group_concat() {}
   ~Variable_size_composite_key_desc_for_gconcat() {}
-  int compare_keys(const uchar *a, const uchar *b) const override;
-  uchar* make_record(bool exclude_nulls) override;
+  uchar* make_record() override;
   bool init(THD *thd, uint count) override;
 };
-
 
 /*
    Unique -- class for unique (removing of duplicates).
@@ -361,16 +362,12 @@ public:
   ~Unique();
   ulong elements_in_tree() { return tree.elements_in_tree; }
 
-  bool unique_add(void *ptr, bool exclude_nulls)
+  bool unique_add(void *ptr)
   {
     uchar *rec_ptr= (uchar *)ptr;
     if (is_variable_sized())
-    {
-      rec_ptr= keys_descriptor->make_record(exclude_nulls);
-      if (!rec_ptr)
-        return -1; // NULL value
-    }
-
+      rec_ptr= keys_descriptor->make_record();
+    DBUG_ASSERT(rec_ptr);
     DBUG_ASSERT(keys_descriptor->get_length_of_key(rec_ptr) <= size);
     return unique_add(rec_ptr, keys_descriptor->get_length_of_key(rec_ptr));
   }

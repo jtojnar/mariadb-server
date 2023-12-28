@@ -1128,8 +1128,7 @@ Encode_key::~Encode_key()
     0         NULL value
     >0        length of the packed record
 */
-uchar* Encode_variable_size_key::make_encoded_record(Sort_keys *sort_keys,
-                                                     bool exclude_nulls)
+uchar* Encode_variable_size_key::make_encoded_record(Sort_keys *sort_keys)
 {
   uchar *to= rec_ptr + Variable_size_keys_descriptor::SIZE_OF_LENGTH_FIELD;
 
@@ -1151,11 +1150,7 @@ uchar* Encode_variable_size_key::make_encoded_record(Sort_keys *sort_keys,
     }
 
     if (sort_field->maybe_null)
-    {
-      if (!length && exclude_nulls)  // rejecting NULLS
-        return NULL;
       to++;
-    }
     to+= length;
   }
 
@@ -1165,8 +1160,7 @@ uchar* Encode_variable_size_key::make_encoded_record(Sort_keys *sort_keys,
 
 
 uchar*
-Encode_key_for_group_concat::make_encoded_record(Sort_keys *sort_keys,
-                                                 bool exclude_nulls)
+Encode_key_for_group_concat::make_encoded_record(Sort_keys *sort_keys)
 {
   uchar *to= rec_ptr + Variable_size_keys_descriptor::SIZE_OF_LENGTH_FIELD;
 
@@ -1178,11 +1172,7 @@ Encode_key_for_group_concat::make_encoded_record(Sort_keys *sort_keys,
     uint length= sort_field->field->make_packed_key_part(to, sort_field);
 
     if (sort_field->maybe_null)
-    {
-      if (!length && exclude_nulls)  // rejecting NULLS
-        return NULL;
       to++;
-    }
     to+= length;
   }
 

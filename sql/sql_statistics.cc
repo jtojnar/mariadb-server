@@ -1828,7 +1828,11 @@ public:
   {
     table_field->mark_unused_memory_as_defined();
     DBUG_ASSERT(tree);
-    return tree->unique_add(table_field->ptr, true);
+    // Skip nulls.
+    if (table_field->is_real_null(0))
+      return 0;
+
+    return tree->unique_add(table_field->ptr);
   }
 
   /*
@@ -1924,7 +1928,7 @@ public:
   bool add() override
   {
     longlong val= table_field->val_int();
-    return tree->unique_add(&val, false);
+    return tree->unique_add(&val);
   }
   bool setup(THD *thd, size_t max_heap_table_size) override
   {

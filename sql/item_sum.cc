@@ -1006,9 +1006,7 @@ int Aggregator_distinct::insert_record_to_unique()
     bloat the tree without providing any valuable info. Besides,
     key_length used to initialize the tree didn't include space for them.
   */
-
-  // TODO(cvicentiu) nulls are already skipped.
-  return tree->unique_add(table->record[0] + table->s->null_bytes, false);
+  return tree->unique_add(table->record[0] + table->s->null_bytes);
 }
 
 
@@ -1071,7 +1069,7 @@ bool Aggregator_distinct::add()
       for SUM(DISTINCT), but is important for AVG(DISTINCT)
     */
     // Nulls are already skipped.
-    return tree->unique_add(table->field[0]->ptr, false);
+    return tree->unique_add(table->field[0]->ptr);
   }
 }
 
@@ -4897,7 +4895,7 @@ int Item_func_group_concat::insert_record_to_unique(bool exclude_nulls)
     bloat the tree without providing any valuable info. Besides,
     key_length used to initialize the tree didn't include space for them.
   */
-  return unique_filter->unique_add(get_record_pointer(), exclude_nulls);
+  return unique_filter->unique_add(get_record_pointer());
 }
 
 
