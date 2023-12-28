@@ -7015,7 +7015,6 @@ private:
                                      const uchar *b, size_t *b_len) const;
   int compare_packed_varstrings(const uchar *a, size_t *a_len,
                                 const uchar *b, size_t *b_len) const;
-  inline static int compare_null_flag(bool a_is_null, bool b_is_null);
 };
 
 

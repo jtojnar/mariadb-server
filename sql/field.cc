@@ -1054,7 +1054,7 @@ Field::make_packed_sort_key_part(uchar *buff,
   {
     if (is_null())
     {
-      *buff++= 0;
+      *buff= 0;
       return 0;  // For NULL values don't write any data
     }
     *buff++=1;
@@ -1086,7 +1086,7 @@ Field::make_packed_key_part(uchar *buff, const SORT_FIELD_ATTR *sort_field)
   {
     if (is_null())
     {
-      *buff++= 0;
+      *buff= 0;
       return 0;  // For NULL values don't write any data
     }
     *buff++=1;
@@ -1113,22 +1113,14 @@ Field_longstr::make_packed_sort_key_part(uchar *buff,
   {
     if (is_null())
     {
-      *buff++= 0;
+      *buff= 0;
       return 0;   // For NULL values don't write any data
     }
     *buff++=1;
   }
-  uchar *end= pack_sort_string(buff, sort_field);
-  return (uint) (end-buff);
-}
-
-
-uchar*
-Field_longstr::pack_sort_string(uchar *to, const SORT_FIELD_ATTR *sort_field)
-{
   StringBuffer<LONGLONG_BUFFER_SIZE+1> buf;
   val_str(&buf, &buf);
-  return to + sort_field->pack_sort_string(to, &buf, field_charset());
+  return sort_field->pack_sort_string(buff, &buf, field_charset());
 }
 
 
