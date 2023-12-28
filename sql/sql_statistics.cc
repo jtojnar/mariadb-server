@@ -1928,7 +1928,7 @@ public:
   bool add() override
   {
     longlong val= table_field->val_int();
-    return tree->unique_add(&val);
+    return tree->unique_add((uchar *)&val);
   }
   bool setup(THD *thd, size_t max_heap_table_size) override
   {

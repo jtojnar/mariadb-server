@@ -80,7 +80,8 @@ Unique::Unique(qsort_cmp2 comp_func, void * comp_func_fixed_arg,
    min_dupl_count(min_dupl_count_arg),
    with_counters(MY_TEST(min_dupl_count_arg)),
    memory_used(0),
-   elements(0)
+   elements(0),
+   keys_descriptor(desc)
 {
   my_b_clear(&file);
   init_tree(&tree, (max_in_memory_size / 16), 0, 0, comp_func,
@@ -105,7 +106,6 @@ Unique::Unique(qsort_cmp2 comp_func, void * comp_func_fixed_arg,
 
   (void) open_cached_file(&file, mysql_tmpdir,TEMP_PREFIX, DISK_BUFFER_SIZE,
                           MYF(MY_WME));
-  keys_descriptor= desc;
 }
 
 

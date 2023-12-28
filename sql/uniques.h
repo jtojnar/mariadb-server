@@ -362,7 +362,7 @@ public:
   ~Unique();
   ulong elements_in_tree() { return tree.elements_in_tree; }
 
-  bool unique_add(void *ptr)
+  bool unique_add(uchar *ptr)
   {
     uchar *rec_ptr= (uchar *)ptr;
     if (is_variable_sized())
