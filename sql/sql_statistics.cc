@@ -1809,14 +1809,14 @@ public:
       tree_key_length= table_field->pack_length();
       desc= new Fixed_size_keys_descriptor(tree_key_length);
     }
-    if (!desc)
+    if (!desc || desc->setup_for_field(thd, table_field))
       return true;  // OOM
     tree= new Unique((qsort_cmp2) key_cmp,
                      (void*) this, tree_key_length,
                      max_heap_table_size, 1, desc);
     if (!tree)
       return true; // OOM
-    return desc->setup_for_field(thd, table_field);
+    return false;
   }
 
 
