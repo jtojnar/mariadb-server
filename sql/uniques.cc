@@ -885,14 +885,6 @@ Variable_size_keys_descriptor::Variable_size_keys_descriptor(uint length)
 }
 
 
-int Variable_size_composite_key_desc_for_gconcat::compare_keys(const uchar *a,
-                                                               const uchar *b) const
-{
-  return sort_keys->compare_keys(a + SIZE_OF_LENGTH_FIELD,
-                                 b + SIZE_OF_LENGTH_FIELD);
-}
-
-
 /*
   @brief
     Compare two packed keys inside the Unique tree
@@ -912,17 +904,15 @@ int Variable_size_keys_descriptor::compare_keys(const uchar *a, const uchar *b) 
                                  b + SIZE_OF_LENGTH_FIELD);
 }
 
-uchar*
-Variable_size_composite_key_desc_for_gconcat::make_record(bool exclude_nulls)
+
+uchar* Variable_size_keys_descriptor::make_record()
 {
-  return Encode_key_for_group_concat::make_encoded_record(sort_keys,
-                                                          exclude_nulls);
+  return make_encoded_record(sort_keys);
 }
 
-
-uchar* Variable_size_keys_descriptor::make_record(bool exclude_nulls)
+uchar* Variable_size_composite_key_desc_for_gconcat::make_record()
 {
-  return make_encoded_record(sort_keys, exclude_nulls);
+  return Encode_key_for_group_concat::make_encoded_record(sort_keys);
 }
 
 
@@ -959,12 +949,12 @@ bool Variable_size_keys_descriptor::init(THD *thd, uint count)
          Encode_variable_size_key::init(max_length);
 }
 
-
 bool Variable_size_composite_key_desc_for_gconcat::init(THD *thd, uint count)
 {
   return Keys_descriptor::init(thd, count) ||
          Encode_key_for_group_concat::init(max_length);
 }
+
 
 
 /*                   FIXED SIZE KEYS DESCRIPTOR                             */

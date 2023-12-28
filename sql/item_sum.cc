@@ -4913,7 +4913,7 @@ Item_func_group_concat::get_keys_descriptor(uint size_arg,
                                             bool allow_packing) const
 {
   if (allow_packing)
-    return new Variable_size_keys_descriptor(size_arg);
+    return new Variable_size_composite_key_desc_for_gconcat(size_arg);
   // TODO(cvicentiu) args_count is not used. Check if it's needed.
   return new Fixed_size_keys_for_group_concat(size_arg);
 }
