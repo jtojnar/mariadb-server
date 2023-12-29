@@ -3619,20 +3619,6 @@ int group_concat_key_cmp_with_distinct(void* arg, const void* key1,
 }
 
 
-/*
-  @brief
-    Comparator function for DISTINCT clause taking into account NULL values.
-*/
-
-int json_arrayagg_key_cmp_with_distinct(void* arg,
-                                        const void* key1,
-                                        const void* key2)
-{
-  Item_func_json_arrayagg *item_func= (Item_func_json_arrayagg*)arg;
-  return item_func->unique_filter->compare_keys((uchar *)key1, (uchar *)key2);
-}
-
-
 /**
   Compares the packed values for fields in expr list of GROUP_CONCAT.
 
@@ -3657,24 +3643,18 @@ int group_concat_packed_key_cmp_with_distinct(void *arg,
   function of sort for syntax: GROUP_CONCAT(expr,... ORDER BY col,... )
 */
 
-extern "C"
-int group_concat_key_cmp_with_order(void* arg, const void* key1, 
-                                    const void* key2)
+static
+int group_concat_order_list_comparison(ORDER **order_list, size_t order_count,
+                                       uchar *key1,
+                                       uchar *key2,
+                                       bool keys_contain_null_bytes)
 {
-  Item_func_group_concat* grp_item= (Item_func_group_concat*) arg;
-  ORDER **order_item, **end;
-
-  for (order_item= grp_item->order, end=order_item+ grp_item->arg_count_order;
-       order_item < end;
-       order_item++)
+  ORDER **end= order_list + order_count;
+  for (ORDER **order_item_ptr= order_list; order_item_ptr < end;
+       order_item_ptr++)
   {
-    Item *item= *(*order_item)->item;
-    /* 
-      If field_item is a const item then either get_tmp_table_field returns 0
-      or it is an item over a const table. 
-    */
-    if (item->const_item())
-      continue;
+    ORDER *order_item= *order_item_ptr;
+    Item *item= *order_item->item;
     /*
       If item is a const item then either get_tmp_table_field returns 0
       or it is an item over a const table.
@@ -3687,25 +3667,58 @@ int group_concat_key_cmp_with_order(void* arg, const void* key1,
       the temporary table, not the original field
 
       Note that for the case of ROLLUP, field may point to another table
-      tham grp_item->table. This is however ok as the table definitions are
+      than grp_item->table. This is however ok as the table definitions are
       the same.
     */
     Field *field= item->get_tmp_table_field();
-    if (!field)
-      continue;
+    DBUG_ASSERT(field);
 
-    uint offset= (field->offset(field->table->record[0]) -
-                  field->table->s->null_bytes);
-    int res= field->cmp((uchar*)key1 + offset, (uchar*)key2 + offset);
+    uint offset= field->offset(field->table->record[0]);
+    if (keys_contain_null_bytes)
+    {
+      if (field->is_null_in_record(key1) &&
+          field->is_null_in_record(key2))
+        continue;
+
+      if (field->is_null_in_record(key1))
+        return (order_item->direction == ORDER::ORDER_ASC) ?  -1 : 1;
+
+      if (field->is_null_in_record(key2))
+        return (order_item->direction == ORDER::ORDER_ASC) ?  1 :  -1;
+    }
+    else
+    {
+      /*
+         Field offset returns the offset in record including null bytes,
+         but if the key buffes don't contain null bytes we need to substract
+         those from the offset to get to the beggining of the field's value.
+      */
+      offset-= field->table->s->null_bytes;
+    }
+    int res= field->cmp(key1 + offset, key2 + offset);
     if (res)
-      return ((*order_item)->direction == ORDER::ORDER_ASC) ? res : -res;
+      return (order_item->direction == ORDER::ORDER_ASC) ? res : -res;
   }
+
   /*
     We can't return 0 because in that case the tree class would remove this
     item as double value. This would cause problems for case-changes and
     if the returned values are not the same we do the sort on.
   */
   return 1;
+}
+
+
+extern "C"
+int group_concat_key_cmp_with_order(void* arg, const void* key1, 
+                                    const void* key2)
+{
+  Item_func_group_concat* grp_item= (Item_func_group_concat*) arg;
+
+  return group_concat_order_list_comparison(grp_item->order,
+                                            grp_item->arg_count_order,
+                                            (uchar *)key1, (uchar *)key2,
+                                            false);
 }
 
 
@@ -3717,61 +3730,15 @@ int group_concat_key_cmp_with_order(void* arg, const void* key1,
     Used for JSON_ARRAYAGG function
 */
 
-int json_arrayagg_key_cmp_with_order(void *arg, const void *key1_arg,
-                                     const void *key2_arg)
+extern "C"
+int json_arrayagg_key_cmp_with_order(void *arg, const void *key1,
+                                     const void *key2)
 {
   Item_func_json_arrayagg* grp_item= (Item_func_json_arrayagg*) arg;
-  ORDER **order_item, **end;
 
-  uchar *key1= (uchar*)key1_arg + grp_item->table->s->null_bytes;
-  uchar *key2= (uchar*)key2_arg + grp_item->table->s->null_bytes;
-
-  for (order_item= grp_item->order, end=order_item+ grp_item->arg_count_order;
-       order_item < end;
-       order_item++)
-  {
-    Item *item= *(*order_item)->item;
-    /*
-      If field_item is a const item then either get_tmp_table_field returns 0
-      or it is an item over a const table.
-    */
-    if (item->const_item())
-      continue;
-    /*
-      We have to use get_tmp_table_field() instead of
-      real_item()->get_tmp_table_field() because we want the field in
-      the temporary table, not the original field
-
-      Note that for the case of ROLLUP, field may point to another table
-      tham grp_item->table. This is however ok as the table definitions are
-      the same.
-    */
-    Field *field= item->get_tmp_table_field();
-    if (!field)
-      continue;
-
-    if (field->is_null_in_record((uchar*)key1_arg) &&
-        field->is_null_in_record((uchar*)key2_arg))
-      continue;
-
-    if (field->is_null_in_record((uchar*)key1_arg))
-      return ((*order_item)->direction == ORDER::ORDER_ASC) ?  -1 : 1;
-
-    if (field->is_null_in_record((uchar*)key2_arg))
-      return ((*order_item)->direction == ORDER::ORDER_ASC) ?  1 :  -1;
-
-    uint offset= (field->offset(field->table->record[0]) -
-                  field->table->s->null_bytes);
-    int res= field->cmp((uchar*)key1 + offset, (uchar*)key2 + offset);
-    if (res)
-      return ((*order_item)->direction == ORDER::ORDER_ASC) ? res : -res;
-  }
-  /*
-    We can't return 0 because in that case the tree class would remove this
-    item as double value. This would cause problems for case-changes and
-    if the returned values are not the same we do the sort on.
-  */
-  return 1;
+  return group_concat_order_list_comparison(grp_item->order,
+                                            grp_item->arg_count_order,
+                                            (uchar *)key1, (uchar *)key2, true);
 }
 
 

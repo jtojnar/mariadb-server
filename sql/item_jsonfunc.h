@@ -688,10 +688,7 @@ public:
 
   qsort_cmp2 get_comparator_function_for_distinct(bool packed) const override
   {
-    // TODO(cvicentiu) packed returns a group_concat function... Is this ok?
-    if (packed)
-      return group_concat_packed_key_cmp_with_distinct;
-    return json_arrayagg_key_cmp_with_distinct;
+    return group_concat_packed_key_cmp_with_distinct;
   }
   qsort_cmp2 get_comparator_function_for_order_by() const override
   { return json_arrayagg_key_cmp_with_order; }

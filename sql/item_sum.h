@@ -1929,9 +1929,6 @@ public:
 C_MODE_START
 int group_concat_key_cmp_with_distinct(void* arg, const void* key1,
                                        const void* key2);
-int json_arrayagg_key_cmp_with_distinct(void* arg, const void* key1,
-                                        const void* key2);
-
 int group_concat_packed_key_cmp_with_distinct(void *arg,
                                               const void *key1,
                                               const void *key2);
