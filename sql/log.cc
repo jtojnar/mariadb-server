@@ -277,11 +277,6 @@ void make_default_log_name(char **out, const char* log_ext, bool once)
 }
 
 
-/*
-  Helper classes to store non-transactional and transactional data
-  before copying it to the binary log.
-*/
-
 void Log_event_writer::add_status(enum_logged_status status)
 {
   if (likely(cache_data))
@@ -4119,7 +4114,7 @@ static bool copy_up_file_and_fill(IO_CACHE *index_file, my_off_t offset)
       goto err;
   }
   /* The following will either truncate the file or fill the end with \n' */
-  if (mysql_file_chsize(file, offset - init_offset, '\n', MYF(MY_WME)) ||
+  if (mysql_file_chsize(file, offset - init_offset, '\n', MYF(MY_WME)) > 0 ||
       mysql_file_sync(file, MYF(MY_WME)))
     goto err;
 
@@ -7498,8 +7493,10 @@ int Event_log::write_cache_raw(THD *thd, IO_CACHE *cache)
 
 int Event_log::write_cache(THD *thd, binlog_cache_data *cache_data)
 {
-  DBUG_ENTER("Event_log::write_cache");
+  int res;
   IO_CACHE *cache= &cache_data->cache_log;
+  DBUG_ENTER("Event_log::write_cache");
+
   mysql_mutex_assert_owner(&LOCK_log);
 
   /*
@@ -7515,8 +7512,16 @@ int Event_log::write_cache(THD *thd, binlog_cache_data *cache_data)
     DBUG_RETURN(res ? ER_ERROR_ON_WRITE : 0);
   }
 
-  if (reinit_io_cache(cache, READ_CACHE, 0, 0, 0))
+  /*
+    Allow flush of transaction logs to temporary go over the tmp space limit
+    as we do not want the commit to fail
+  */
+  cache->myflags&= ~MY_TRACK_WITH_LIMIT;
+  res= reinit_io_cache(cache, READ_CACHE, 0, 0, 0);
+  cache->myflags|= MY_TRACK_WITH_LIMIT;
+  if (res)
     DBUG_RETURN(ER_ERROR_ON_WRITE);
+
   /* Amount of remaining bytes in the IO_CACHE read buffer. */
   size_t log_file_pos;
   uchar header_buf[LOG_EVENT_HEADER_LEN];
@@ -9674,7 +9679,7 @@ int TC_LOG_MMAP::open(const char *opt_name)
       goto err;
     inited=1;
     file_length= opt_tc_log_size;
-    if (mysql_file_chsize(fd, file_length, 0, MYF(MY_WME)))
+    if (mysql_file_chsize(fd, file_length, 0, MYF(MY_WME)) > 0)
       goto err;
   }
   else
@@ -10291,7 +10296,7 @@ bool MYSQL_BIN_LOG::truncate_and_remove_binlogs(const char *file_name,
 
     // Trim index file
     error= mysql_file_chsize(index_file.file, index_file_offset, '\n',
-                             MYF(MY_WME));
+                             MYF(MY_WME) > 0);
     if (!error)
       error= mysql_file_sync(index_file.file, MYF(MY_WME));
     if (error)
@@ -10333,14 +10338,14 @@ bool MYSQL_BIN_LOG::truncate_and_remove_binlogs(const char *file_name,
   old_size= s.st_size;
   clear_inuse_flag_when_closing(file);
   /* Change binlog file size to truncate_pos */
-  error= mysql_file_chsize(file, pos, 0, MYF(MY_WME));
+  error= mysql_file_chsize(file, pos, 0, MYF(MY_WME)) > 0;
   if (!error)
     error= mysql_file_sync(file, MYF(MY_WME));
   if (error)
   {
     sql_print_error("Failed to truncate the "
-                    "binlog file:%s to size:%llu. Error:%d",
-                    file_name, pos, error);
+                    "binlog file: %s to size: %llu. Error: %d",
+                    file_name, pos, my_errno);
     goto end;
   }
   else

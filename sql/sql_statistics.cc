@@ -1604,7 +1604,8 @@ public:
 
     do {
       h->position(owner->record[0]);
-      my_b_write(&io_cache, h->ref, rowid_size);
+      if (my_b_write(&io_cache, h->ref, rowid_size))
+        return true;
 
     } while (!h->ha_index_next_same(owner->record[0], key, prefix_len));
 

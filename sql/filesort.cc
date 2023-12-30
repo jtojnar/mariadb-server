@@ -973,11 +973,6 @@ static ha_rows find_all_keys(THD *thd, Sort_param *param, SQL_SELECT *select,
     if (unlikely(thd->check_killed()))
     {
       DBUG_PRINT("info",("Sort killed by user"));
-      if (!quick_select)
-      {
-        (void) file->extra(HA_EXTRA_NO_CACHE);
-        file->ha_rnd_end();
-      }
       goto err;                               /* purecov: inspected */
     }
 
@@ -1082,6 +1077,11 @@ static ha_rows find_all_keys(THD *thd, Sort_param *param, SQL_SELECT *select,
   DBUG_RETURN(num_records);
 
 err:
+  if (!quick_select)
+  {
+    (void) file->extra(HA_EXTRA_NO_CACHE);
+    file->ha_rnd_end();
+  }
   sort_form->column_bitmaps_set(save_read_set, save_write_set);
   DBUG_RETURN(HA_POS_ERROR);
 } /* find_all_keys */
