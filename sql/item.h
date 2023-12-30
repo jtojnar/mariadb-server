@@ -6200,6 +6200,17 @@ protected:
   /** The original item that is copied */
   Item *item;
 
+#ifndef DBUG_OFF
+  /**
+    Item_copy objects are valid only after the copy() call which effectively
+    initializes the object. This method is used to check whether the object is
+    valid (sane) or not
+  */
+  bool sane() const { return is_sane; }
+
+  void set_sane() { is_sane= true; }
+ #endif
+
   /**
     Constructor of the Item_copy class
 
@@ -6265,6 +6276,11 @@ public:
     return (item->walk(processor, walk_subquery, args)) ||
       (this->*processor)(args);
   }
+
+private:
+#ifndef DBUG_OFF
+  bool is_sane= false;
+#endif
 };
 
 /**
