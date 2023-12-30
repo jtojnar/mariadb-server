@@ -2303,19 +2303,16 @@ Sort_keys::compute_sort_length(THD *thd, bool *allow_packing_for_sortkeys)
         nullable_cols++;				// Place for NULL marker
     }
 
-    if (sortorder->is_variable_sized() && *allow_packing_for_sortkeys)
-    {
-      *allow_packing_for_sortkeys= sortorder->check_if_packing_possible(thd);
-      sortorder->length_bytes=
-        number_storage_requirement(MY_MIN(sortorder->original_length,
-                                          thd->variables.max_sort_length));
-    }
-
     if (sortorder->is_variable_sized())
     {
+      *allow_packing_for_sortkeys= sortorder->check_if_packing_possible(thd);
+
       set_if_smaller(sortorder->length, thd->variables.max_sort_length);
       set_if_smaller(sortorder->original_length, thd->variables.max_sort_length);
+      sortorder->length_bytes=
+        number_storage_requirement(sortorder->original_length);
     }
+
     DBUG_ASSERT(length < UINT_MAX32 - sortorder->length);
     length+= sortorder->length;
 
@@ -2991,8 +2988,6 @@ int SORT_FIELD::compare_keys(const uchar *a, size_t *a_len,
     a++;
     b++;
   }
-
-
 
   if (is_variable_sized())
     result= compare_packed_varstrings(a, a_len, b, b_len);
