@@ -1726,38 +1726,25 @@ static bool append_json_value_from_field(String *str,
   @retval
     FALSE   value appended in JSON format
     TRUE    error
+
+  TODO(cvicentiu) this should be unified with the other instance of
+  append_json_value_from_field
 */
 
 static bool append_json_value_from_field(String *str, Item *item, Field *field,
-                                        String *tmp_val)
+                                         String *tmp_val)
 {
+  if (field->is_null())
+    return str->append("null", 4);
+
   if (item->type_handler()->is_bool_type())
   {
-    if (field->is_null())
-      goto append_null;
-
-    longlong v_int= field->val_int();
-    const char *t_f;
-    int t_f_len;
-
-    if (v_int)
-    {
-      t_f= "true";
-      t_f_len= 4;
-    }
-    else
-    {
-      t_f= "false";
-      t_f_len= 5;
-    }
-
-    return str->append(t_f, t_f_len);
+    if (field->val_int())
+      return str->append(STRING_WITH_LEN("true"));
+    return str->append(STRING_WITH_LEN("false"));
   }
   {
-    if (field->is_null())
-      goto append_null;
     String *sv= field->val_str(tmp_val);
-
     if (is_json_type(item))
       return str->append(sv->ptr(), sv->length());
 
@@ -1769,9 +1756,6 @@ static bool append_json_value_from_field(String *str, Item *item, Field *field,
     }
     return st_append_escaped(str, sv);
   }
-
-append_null:
-  return str->append("null", 4);
 }
 
 
