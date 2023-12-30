@@ -1684,46 +1684,27 @@ append_null:
 static bool append_json_value_from_field(String *str,
   Item *i, Field *f, const uchar *key, size_t offset, String *tmp_val)
 {
+  if (f->is_null_in_record(key))
+    return str->append(STRING_WITH_LEN("null"));
+
   if (i->type_handler()->is_bool_type())
   {
-    longlong v_int= f->val_int(key + offset);
-    const char *t_f;
-    int t_f_len;
-
-    if (f->is_null_in_record(key))
-      goto append_null;
-
-    if (v_int)
-    {
-      t_f= "true";
-      t_f_len= 4;
-    }
-    else
-    {
-      t_f= "false";
-      t_f_len= 5;
-    }
-
-    return str->append(t_f, t_f_len);
+    if (f->val_int(key + offset))
+      return str->append(STRING_WITH_LEN("true"));
+    return str->append(STRING_WITH_LEN("false"));
   }
+
+  String *sv= f->val_str(tmp_val, key + offset);
+  if (is_json_type(i))
+    return str->append(sv->ptr(), sv->length());
+
+  if (i->result_type() == STRING_RESULT)
   {
-    String *sv= f->val_str(tmp_val, key + offset);
-    if (f->is_null_in_record(key))
-      goto append_null;
-    if (is_json_type(i))
-      return str->append(sv->ptr(), sv->length());
-
-    if (i->result_type() == STRING_RESULT)
-    {
-      return str->append('"') ||
-             st_append_escaped(str, sv) ||
-             str->append('"');
-    }
-    return st_append_escaped(str, sv);
+    return str->append('"') ||
+           st_append_escaped(str, sv) ||
+           str->append('"');
   }
-
-append_null:
-  return str->append(STRING_WITH_LEN("null"));
+  return st_append_escaped(str, sv);
 }
 
 
