@@ -589,6 +589,12 @@ void srv_init_purge_tasks();
 
 /** Status variables to be passed to MySQL */
 struct export_var_t{
+	/** Row operation counters */
+	struct alignas(CPU_LEVEL1_DCACHE_LINESIZE) {
+		/** Mutex protecting the counters */
+		srw_spin_mutex mutex;
+		size_t deleted, inserted, read, updated;
+	} rows;
 #ifdef BTR_CUR_HASH_ADAPT
 	ulint innodb_ahi_hit;
 	ulint innodb_ahi_miss;

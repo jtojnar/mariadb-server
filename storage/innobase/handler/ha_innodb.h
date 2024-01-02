@@ -499,6 +499,10 @@ protected:
 	this is set in external_lock function */
 	THD*			m_user_thd;
 
+private:
+	/** Row operation counters */
+	struct { size_t deleted= 0, inserted= 0, read= 0, updated= 0; } rows;
+public:
 	/** buffer used in updates */
 	uchar*			m_upd_buf;
 
