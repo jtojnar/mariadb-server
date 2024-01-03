@@ -4257,7 +4257,6 @@ bool Item_func_group_concat::add(bool exclude_nulls)
     return 0;
 
   size_t row_str_len= 0;
-  StringBuffer<MAX_FIELD_WIDTH> buf;
   String *res;
   bool row_eligible= TRUE;
 
@@ -4267,6 +4266,8 @@ bool Item_func_group_concat::add(bool exclude_nulls)
 
   if (distinct)
   {
+    //TODO(cvicentiu) we check all fields here in insert_record_to_unique
+    //then we check them again in the follow-up if clause.
     uint count= unique_filter->elements_in_tree();
     int retval= insert_record_to_unique(exclude_nulls);
     if (retval == -1) // Value skipped.
@@ -4277,6 +4278,7 @@ bool Item_func_group_concat::add(bool exclude_nulls)
 
   if (!distinct || tree)
   {
+    StringBuffer<MAX_FIELD_WIDTH> buf;
     for (uint i= 0; i < arg_count_field; i++)
     {
       Item *show_item= args[i];
@@ -4284,30 +4286,25 @@ bool Item_func_group_concat::add(bool exclude_nulls)
         continue;
 
       Field *field= show_item->get_tmp_table_field();
-      if (field)
-      {
-        if (field->is_null_in_record((const uchar*) table->record[0]) &&
-            exclude_nulls)
-          return 0;                    // Skip row if it contains null
-        buf.set_buffer_if_not_allocated(&my_charset_bin);
-        if (tree && (res= field->val_str(&buf)))
-          row_str_len+= res->length();
-      }
-      else
-      {
-        /*
-          should not reach here, we create temp table for all the arguments of
-          the group_concat function
-        */
-        DBUG_ASSERT(0);
-      }
+      /*
+        We create temp table for all the arguments of the group_concat function
+      */
+      DBUG_ASSERT(field);
+      if (field->is_null_in_record((const uchar*) table->record[0]) &&
+          exclude_nulls)
+        return 0;                    // Skip row if it contains null
+      buf.set_buffer_if_not_allocated(&my_charset_bin);
+      if (tree && (res= field->val_str(&buf)))
+        row_str_len+= res->length();
     }
   }
 
   null_value= FALSE;
 
-  TREE_ELEMENT *el= 0;                          // Only for safety
-  if (row_eligible && tree)
+  if (!row_eligible)
+    return 0;
+
+  if (tree)
   {
     THD *thd= table->in_use;
     table->field[0]->store(row_str_len, FALSE);
@@ -4315,7 +4312,9 @@ bool Item_func_group_concat::add(bool exclude_nulls)
         && tree->elements_in_tree > 1)
       if (repack_tree(thd))
         return 1;
-    el= tree_insert(tree, get_record_pointer(), 0, tree->custom_arg);
+
+    TREE_ELEMENT *el= tree_insert(tree, get_record_pointer(), 0,
+                                  tree->custom_arg);
     /* check if there was enough memory to insert the row */
     if (!el)
       return 1;
@@ -4326,7 +4325,7 @@ bool Item_func_group_concat::add(bool exclude_nulls)
     In case of GROUP_CONCAT with DISTINCT or ORDER BY (or both) don't dump the
     row to the output buffer here. That will be done in val_str.
   */
-  if (row_eligible && !warning_for_row && (!tree && !distinct))
+  if (!warning_for_row && (!tree && !distinct))
     dump_leaf_key(get_record_pointer(), 1, this);
 
   return 0;
