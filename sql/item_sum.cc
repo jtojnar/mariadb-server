@@ -3817,9 +3817,10 @@ int Item_func_group_concat::dump_leaf_key(void* key_arg,
   else
     result->append(*item->separator);
 
-  for (; arg < arg_end; arg++)
+  for (Item *arg_item= *arg; arg < arg_end; arg_item= *(++arg))
   {
     String *res;
+    Field *field;
     /*
       We have to use get_tmp_table_field() instead of
       real_item()->get_tmp_table_field() because we want the field in
@@ -3827,21 +3828,16 @@ int Item_func_group_concat::dump_leaf_key(void* key_arg,
       We also can't use table->field array to access the fields
       because it contains both order and arg list fields.
      */
-    if ((*arg)->const_item())
-      res= item->get_str_from_item(*arg, &tmp);
+    if (arg_item->const_item() || !(field= arg_item->get_tmp_table_field()))
+      res= item->get_str_from_item(arg_item, &tmp);
     else
     {
-      Field *field= (*arg)->get_tmp_table_field();
-      if (field)
-      {
-        uint offset= (field->offset(field->table->record[0]) -
-                      table->s->null_bytes);
-        DBUG_ASSERT(offset < table->s->reclength);
-        res= item->get_str_from_field(*arg, field, &tmp, key,
-                                      offset + item->get_null_bytes());
-      }
-      else
-        res= item->get_str_from_item(*arg, &tmp);
+      DBUG_ASSERT(field);
+      uint offset= (field->offset(field->table->record[0]) -
+                    table->s->null_bytes);
+      DBUG_ASSERT(offset < table->s->reclength);
+      res= item->get_str_from_field(arg_item, field, &tmp, key,
+                                    offset + item->get_null_bytes());
     }
 
     if (res)
