@@ -3832,6 +3832,15 @@ int Item_func_group_concat::dump_leaf_key(void* key_arg,
       res= item->get_str_from_item(arg_item, &tmp);
     else
     {
+      /*
+        TODO(cvicentiu) Technical debt...
+        key here is the record pointer without the null_bytes if we're
+        in Item_func_group_concat but *with* the null_bytes if we're in
+        Item_func_json_arrayagg.
+
+        This code should be refactored to not require such
+        weird trickery with item->get_null_bytes()
+      */
       DBUG_ASSERT(field);
       uint offset= (field->offset(field->table->record[0]) -
                     table->s->null_bytes);
