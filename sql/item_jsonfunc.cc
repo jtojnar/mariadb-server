@@ -1666,19 +1666,19 @@ static int append_json_value(String *str, Item *item, String *tmp_val)
 
 
 static bool append_json_value_from_field(String *str,
-  Item *i, Field *f, const uchar *key, size_t offset, String *tmp_val)
+  Item *i, Field *f, const uchar *record, size_t offset, String *tmp_val)
 {
-  if (f->is_null_in_record(key))
+  if (f->is_null_in_record(record))
     return str->append(STRING_WITH_LEN("null"));
 
   if (i->type_handler()->is_bool_type())
   {
-    if (f->val_int(key + offset))
+    if (f->val_int(record + offset))
       return str->append(STRING_WITH_LEN("true"));
     return str->append(STRING_WITH_LEN("false"));
   }
 
-  String *sv= f->val_str(tmp_val, key + offset);
+  String *sv= f->val_str(tmp_val, record + offset);
   if (is_json_type(i))
     return str->append(sv->ptr(), sv->length());
 

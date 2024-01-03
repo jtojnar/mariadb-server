@@ -32,7 +32,6 @@
 */
 
 #include "mariadb.h"
-#include "sql_priv.h"
 #include "unireg.h"
 #include "sql_sort.h"
 #include "queues.h"                             // QUEUE
@@ -40,25 +39,28 @@
 #include "uniques.h"	                        // Unique
 #include "sql_sort.h"
 
-int unique_write_to_file(uchar* key, element_count count, Unique *unique)
+int Unique::unique_write_to_file(uchar* key, element_count count,
+                                 Unique *unique)
 {
-  return unique->write_record_to_file(key) ? 1 : 0;
+  return my_b_write(&unique->file, key,
+                    unique->keys_descriptor->get_length_of_key(key)) ? 1 : 0;
 }
 
-int unique_write_to_file_with_count(uchar* key, element_count count, Unique *unique)
+int Unique::unique_write_to_file_with_count(uchar* key, element_count count,
+                                            Unique *unique)
 {
   return unique_write_to_file(key, count, unique) ||
          my_b_write(&unique->file, (uchar*)&count, sizeof(element_count)) ? 1 : 0;
 }
 
-int unique_write_to_ptrs(uchar* key, element_count count, Unique *unique)
+int Unique::unique_write_to_ptrs(uchar* key, element_count count, Unique *unique)
 {
   memcpy(unique->sort.record_pointers, key, unique->size);
   unique->sort.record_pointers+=unique->size;
   return 0;
 }
 
-int unique_intersect_write_to_ptrs(uchar* key, element_count count, Unique *unique)
+int Unique::unique_intersect_write_to_ptrs(uchar* key, element_count count, Unique *unique)
 {
   if (count >= unique->min_dupl_count)
   {
@@ -853,23 +855,6 @@ bool Unique::get(TABLE *table)
 err:  
   my_free(sort_buffer);  
   DBUG_RETURN(rc);
-}
-
-
-/*
-  @brief
-    Write an intermediate unique record to the file
-
-  @param key                  key to be written
-
-  @retval
-    >0   Error
-    =0   Record successfully written
-*/
-
-int Unique::write_record_to_file(uchar *key)
-{
-  return my_b_write(get_file(), key, keys_descriptor->get_length_of_key(key));
 }
 
 

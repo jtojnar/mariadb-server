@@ -356,8 +356,6 @@ public:
   size_t get_max_in_memory_size() const { return max_in_memory_size; }
 
   IO_CACHE *get_file()  { return &file; }
-  int write_record_to_file(uchar *key);
-
   // returns TRUE if the unique tree stores packed values
   bool is_variable_sized() { return keys_descriptor->is_variable_sized(); }
 
@@ -369,14 +367,14 @@ public:
                       uint non_const_args, uint arg_count)
   { return keys_descriptor->setup_for_item(thd, item, non_const_args, arg_count); }
 
-  friend int unique_write_to_file(uchar* key, element_count count,
+private:
+  static int unique_write_to_file(uchar *key, element_count count,
                                   Unique *unique);
-  friend int unique_write_to_ptrs(uchar* key, element_count count,
-                                  Unique *unique);
-
-  friend int unique_write_to_file_with_count(uchar* key, element_count count,
+  static int unique_write_to_file_with_count(uchar* key, element_count count,
                                              Unique *unique);
-  friend int unique_intersect_write_to_ptrs(uchar* key, element_count count,
+  static int unique_write_to_ptrs(uchar* key, element_count count,
+                                  Unique *unique);
+  static int unique_intersect_write_to_ptrs(uchar* key, element_count count,
                                             Unique *unique);
 };
 
