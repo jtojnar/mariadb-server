@@ -18,8 +18,9 @@
 
 #include "mariadb.h"
 #include "field.h"
-#include "sql_string.h"
 #include "filesort.h"
+#include "my_tree.h"
+#include "sql_string.h"
 
 
 /*
