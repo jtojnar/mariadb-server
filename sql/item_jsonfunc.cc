@@ -3957,8 +3957,9 @@ String *Item_func_json_arrayagg::get_str_from_item(Item *i, String *tmp)
 }
 
 
-String *Item_func_json_arrayagg::get_str_from_field(Item *i,Field *f,
-    String *tmp, const uchar *key, size_t offset)
+String *Item_func_json_arrayagg::get_str_from_field(
+  Item *i,Field *f,
+  String *tmp, const uchar *key, size_t offset)
 {
   m_tmp_json.length(0);
 
