@@ -1665,6 +1665,29 @@ static int append_json_value(String *str, Item *item, String *tmp_val)
 }
 
 
+/*
+  @brief
+    Append the value of a field in JSON format
+
+  @param
+    str                  buffer to write the value
+    item                 argument to JSON_ARRAYAGG item
+    field                field whose value needs to be appended
+    record               record pointer for the field's table.
+    offset               offset where the field's value starts in the record.
+    tmp_val              temp buffer
+
+  @note
+    Use this function when the field has the value in its ptr.
+    This is currently used when packing is done for JSON_ARRAYAGG function.
+    In the case of packing, we have to unpack the value to Field::ptr.
+
+  @retval
+    FALSE   value appended in JSON format
+    TRUE    error
+
+  TODO(cvicentiu) this method should not require offset, we can compute it.
+*/
 static bool append_json_value_from_field(String *str,
   Item *i, Field *f, const uchar *record, size_t offset, String *tmp_val)
 {
@@ -1683,56 +1706,6 @@ static bool append_json_value_from_field(String *str,
     return str->append(sv->ptr(), sv->length());
 
   if (i->result_type() == STRING_RESULT)
-  {
-    return str->append('"') ||
-           st_append_escaped(str, sv) ||
-           str->append('"');
-  }
-  return st_append_escaped(str, sv);
-}
-
-
-/*
-  @brief
-    Append the value of a field in JSON format
-
-  @param
-    str                  buffer to write the value
-    item                 argument to JSON_ARRAYAGG item
-    field                field whose value needs to be appended
-    tmp_val              temp buffer
-
-  @note
-    Use this function when the field has the value in its ptr.
-    This is currently used when packing is done for JSON_ARRAYAGG function.
-    In the case of packing, we have to unpack the value to Field::ptr.
-
-  @retval
-    FALSE   value appended in JSON format
-    TRUE    error
-
-  TODO(cvicentiu) this should be unified with the other instance of
-  append_json_value_from_field
-*/
-
-static bool append_json_value_from_field(String *str, Item *item, Field *field,
-                                         String *tmp_val)
-{
-  if (field->is_null())
-    return str->append("null", 4);
-
-  if (item->type_handler()->is_bool_type())
-  {
-    if (field->val_int())
-      return str->append(STRING_WITH_LEN("true"));
-    return str->append(STRING_WITH_LEN("false"));
-  }
-
-  String *sv= field->val_str(tmp_val);
-  if (is_json_type(item))
-    return str->append(sv->ptr(), sv->length());
-
-  if (item->result_type() == STRING_RESULT)
   {
     return str->append('"') ||
            st_append_escaped(str, sv) ||
@@ -3958,25 +3931,12 @@ String *Item_func_json_arrayagg::get_str_from_item(Item *i, String *tmp)
 
 
 String *Item_func_json_arrayagg::get_str_from_field(
-  Item *i,Field *f,
+  Item *i, Field *f,
   String *tmp, const uchar *key, size_t offset)
 {
   m_tmp_json.length(0);
 
   if (append_json_value_from_field(&m_tmp_json, i, f, key, offset, tmp))
-    return NULL;
-
-  return &m_tmp_json;
-
-}
-
-
-String *Item_func_json_arrayagg::get_str_from_field(Item *i,Field *f,
-                                                    String *tmp)
-{
-  m_tmp_json.length(0);
-
-  if (append_json_value_from_field(&m_tmp_json, i, f, tmp))
     return NULL;
 
   return &m_tmp_json;

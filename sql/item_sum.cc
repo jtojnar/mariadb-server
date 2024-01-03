@@ -3961,7 +3961,10 @@ Item_func_group_concat::dump_leaf_variable_sized_key(
       {
         next_key= field->unpack(field->ptr, key, key_end, 0);
       }
-      res= item->get_str_from_field(*arg, field, &tmp);
+      const uchar *record= field->table->record[0];
+      size_t offset = field->offset(field->table->record[0]);
+
+      res= item->get_str_from_field(*arg, field, &tmp, record, offset);
       key= next_key;
     }
 
