@@ -1641,43 +1641,27 @@ static int append_json_value(String *str, Item *item, String *tmp_val)
   if (item->type_handler()->is_bool_type())
   {
     longlong v_int= item->val_int();
-    const char *t_f;
-    int t_f_len;
-
     if (item->null_value)
-      goto append_null;
-
+      return str->append(STRING_WITH_LEN("null"));
     if (v_int)
-    {
-      t_f= "true";
-      t_f_len= 4;
-    }
-    else
-    {
-      t_f= "false";
-      t_f_len= 5;
-    }
-
-    return str->append(t_f, t_f_len);
+      return str->append(STRING_WITH_LEN("true"));
+    return str->append(STRING_WITH_LEN("false"));
   }
+
+  String *sv= item->val_json(tmp_val);
+  if (item->null_value)
+    return str->append(STRING_WITH_LEN("null"));
+
+  if (is_json_type(item))
+    return str->append(sv->ptr(), sv->length());
+
+  if (item->result_type() == STRING_RESULT)
   {
-    String *sv= item->val_json(tmp_val);
-    if (item->null_value)
-      goto append_null;
-    if (is_json_type(item))
-      return str->append(sv->ptr(), sv->length());
-
-    if (item->result_type() == STRING_RESULT)
-    {
-      return str->append('"') ||
-             st_append_escaped(str, sv) ||
-             str->append('"');
-    }
-    return st_append_escaped(str, sv);
+    return str->append('"') ||
+           st_append_escaped(str, sv) ||
+           str->append('"');
   }
-
-append_null:
-  return str->append(STRING_WITH_LEN("null"));
+  return st_append_escaped(str, sv);
 }
 
 
@@ -1743,19 +1727,18 @@ static bool append_json_value_from_field(String *str, Item *item, Field *field,
       return str->append(STRING_WITH_LEN("true"));
     return str->append(STRING_WITH_LEN("false"));
   }
-  {
-    String *sv= field->val_str(tmp_val);
-    if (is_json_type(item))
-      return str->append(sv->ptr(), sv->length());
 
-    if (item->result_type() == STRING_RESULT)
-    {
-      return str->append("\"", 1) ||
-             st_append_escaped(str, sv) ||
-             str->append("\"", 1);
-    }
-    return st_append_escaped(str, sv);
+  String *sv= field->val_str(tmp_val);
+  if (is_json_type(item))
+    return str->append(sv->ptr(), sv->length());
+
+  if (item->result_type() == STRING_RESULT)
+  {
+    return str->append('"') ||
+           st_append_escaped(str, sv) ||
+           str->append('"');
   }
+  return st_append_escaped(str, sv);
 }
 
 

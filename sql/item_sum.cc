@@ -4619,36 +4619,6 @@ Item_func_group_concat::get_comparator_function_for_distinct(bool packed) const
 }
 
 
-/*
-
-  @brief
-    Get the record pointer of the current row of the table
-
-  @details
-    look at the comments for Item_func_group_concat::get_null_bytes
-*/
-
-uchar* Item_func_group_concat::get_record_pointer() const
-{
-  return  table->record[0] + table->s->null_bytes;
-}
-
-
-/*
-  @brief
-    Get the null bytes for the table if required.
-
-  @details
-    This function is used for GROUP_CONCAT (or JSON_ARRAYAGG) implementation
-    where the Unique tree or the ORDER BY tree may store the null values,
-    in such case we also store the null bytes inside each node of the tree.
-*/
-
-uint Item_func_group_concat::get_null_bytes() const
-{
-  return 0;
-}
-
 
 /*
   @brief

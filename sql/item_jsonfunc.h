@@ -704,10 +704,11 @@ public:
     return Item_func_group_concat::add(false);
   }
 
-  virtual uchar* get_record_pointer() const override
+protected:
+  uchar* get_record_pointer() const override
   { return table->record[0]; }
 
-  virtual uint get_null_bytes() const override
+  uint get_null_bytes() const override
   { return table->s->null_bytes; }
 
 };

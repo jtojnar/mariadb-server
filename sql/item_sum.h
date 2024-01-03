@@ -2093,8 +2093,6 @@ public:
   virtual qsort_cmp2 get_comparator_function_for_distinct(bool packed) const;
   virtual qsort_cmp2 get_comparator_function_for_order_by() const
   { return group_concat_key_cmp_with_order; }
-  virtual uchar* get_record_pointer() const;
-  virtual uint get_null_bytes() const;
   bool is_distinct_packed();
   bool is_packing_allowed(uint* total_length);
   static int dump_leaf_key(void* key_arg,
@@ -2106,6 +2104,20 @@ public:
   virtual int insert_record_to_unique(bool exclude_nulls);
   Keys_descriptor *get_keys_descriptor(uint size_arg,
                                        bool allow_packing) const override;
+protected:
+  /*
+    @brief
+      Get the null bytes for the table if required.
+
+    @details
+      This function is used for GROUP_CONCAT (or JSON_ARRAYAGG) implementation
+      where the Unique tree or the ORDER BY tree may store the null values,
+      in such case we also store the null bytes inside each node of the tree.
+  */
+  virtual uint get_null_bytes() const
+  { return 0; }
+  virtual uchar* get_record_pointer() const
+  { return table->record[0] + table->s->null_bytes; }
 };
 
 #endif /* ITEM_SUM_INCLUDED */
