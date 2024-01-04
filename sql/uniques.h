@@ -172,7 +172,7 @@ public:
 
   // All need to be moved to some new class
   // returns the length of the key along with the length bytes for the key
-  static uint read_packed_length(uchar *p)
+  static uint read_packed_length(const uchar *p)
   {
     return SIZE_OF_LENGTH_FIELD + uint4korr(p);
   }

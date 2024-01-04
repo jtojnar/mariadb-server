@@ -1689,19 +1689,19 @@ static int append_json_value(String *str, Item *item, String *tmp_val)
   TODO(cvicentiu) this method should not require offset, we can compute it.
 */
 static bool append_json_value_from_field(String *str,
-  Item *i, Field *f, const uchar *record, size_t offset, String *tmp_val)
+  Item *i, Field *f, String *tmp_val, const uchar *key, bool is_null)
 {
-  if (f->is_null_in_record(record))
+  if (is_null)
     return str->append(STRING_WITH_LEN("null"));
 
   if (i->type_handler()->is_bool_type())
   {
-    if (f->val_int(record + offset))
+    if (f->val_int())
       return str->append(STRING_WITH_LEN("true"));
     return str->append(STRING_WITH_LEN("false"));
   }
 
-  String *sv= f->val_str(tmp_val, record + offset);
+  String *sv= f->val_str(tmp_val, key);
   if (is_json_type(i))
     return str->append(sv->ptr(), sv->length());
 
@@ -3931,12 +3931,11 @@ String *Item_func_json_arrayagg::get_str_from_item(Item *i, String *tmp)
 
 
 String *Item_func_json_arrayagg::get_str_from_field(
-  Item *i, Field *f,
-  String *tmp, const uchar *key, size_t offset)
+  Item *i, Field *f, String *tmp, const uchar* key, bool is_null)
 {
   m_tmp_json.length(0);
 
-  if (append_json_value_from_field(&m_tmp_json, i, f, key, offset, tmp))
+  if (append_json_value_from_field(&m_tmp_json, i, f, tmp, key, is_null))
     return NULL;
 
   return &m_tmp_json;

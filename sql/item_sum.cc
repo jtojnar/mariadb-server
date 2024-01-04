@@ -27,8 +27,8 @@
 #endif
 
 #include "mariadb.h"
-#include "sql_priv.h"
 #include "sql_select.h"
+#include "item_sum.h"
 #include "uniques.h"
 #include "sp_rcontext.h"
 #include "sp.h"
@@ -3776,51 +3776,52 @@ void Item_func_group_concat::cut_max_length(String *result,
 }
 
 
-/**
-  Append data from current leaf to item->result.
-*/
-
-int Item_func_group_concat::dump_leaf_key(void* key_arg,
-                                          element_count count __attribute__((unused)),
-                                          void* item_arg)
+int Item_func_group_concat::dump_leaf_key_impl(const uchar* key_arg,
+                                               bool is_variable_sized)
 {
-  Item_func_group_concat *item= (Item_func_group_concat *) item_arg;
-  TABLE *table= item->table;
   uint max_length= table->in_use->variables.group_concat_max_len;
   String tmp((char *)table->record[1], table->s->reclength,
              default_charset_info);
   String tmp2;
-  const uchar *key= (const uchar *) key_arg;
-  String *result= &item->result;
-  Item **arg= item->args, **arg_end= item->args + item->arg_count_field;
-  uint old_length= result->length();
+  const uchar *key= key_arg, *key_end;
+  Item **arg= args, **arg_end= args + arg_count_field;
+  uint old_length= result.length();
 
-  ulonglong *offset_limit= &item->copy_offset_limit;
-  ulonglong *row_limit = &item->copy_row_limit;
-  if (item->limit_clause && !(*row_limit))
+  if (is_variable_sized)
   {
-    item->result_finalized= true;
+    // key format is:
+    // [total_size] [opt_key1_null_byte] [key1_length] [key1_value]
+    //              [opt_key2_null_byte] [key2_length] [key2_value] ...
+    // Start of key1.
+    key_end= key_arg +
+      Variable_size_keys_descriptor::read_packed_length(key_arg);
+    key_arg+= Variable_size_keys_descriptor::SIZE_OF_LENGTH_FIELD;
+    key= key_arg;
+  }
+
+  if (limit_clause && !copy_row_limit)
+  {
+    result_finalized= true;
     return 1;
   }
 
   tmp.length(0);
 
-  if (item->limit_clause && (*offset_limit))
+  if (limit_clause && copy_offset_limit)
   {
-    item->row_count++;
-    (*offset_limit)--;
+    row_count++;
+    copy_offset_limit--;
     return 0;
   }
 
-  if (!item->result_finalized)
-    item->result_finalized= true;
+  if (!result_finalized)
+    result_finalized= true;
   else
-    result->append(*item->separator);
+    result.append(*separator);
 
   for (Item *arg_item= *arg; arg < arg_end; arg_item= *(++arg))
   {
     String *res;
-    Field *field;
     /*
       We have to use get_tmp_table_field() instead of
       real_item()->get_tmp_table_field() because we want the field in
@@ -3828,42 +3829,70 @@ int Item_func_group_concat::dump_leaf_key(void* key_arg,
       We also can't use table->field array to access the fields
       because it contains both order and arg list fields.
      */
-    if (arg_item->const_item() || !(field= arg_item->get_tmp_table_field()))
-      res= item->get_str_from_item(arg_item, &tmp);
+    if (arg_item->const_item())
+      res= get_str_from_item(arg_item, &tmp);
     else
     {
-      /*
-        TODO(cvicentiu) Technical debt...
-        key here is the record pointer without the null_bytes if we're
-        in Item_func_group_concat but *with* the null_bytes if we're in
-        Item_func_json_arrayagg.
-
-        This code should be refactored to not require such
-        weird trickery with item->get_null_bytes()
-      */
+      Field *field= arg_item->get_tmp_table_field();
       DBUG_ASSERT(field);
-      uint offset= (field->offset(field->table->record[0]) -
-                    table->s->null_bytes);
-      DBUG_ASSERT(offset < table->s->reclength);
-      res= item->get_str_from_field(arg_item, field, &tmp, key,
-                                    offset + item->get_null_bytes());
+      bool is_null= false;
+      if (is_variable_sized)
+      {
+        /*
+           Nullable fields always store the null byte.
+           TODO(cvicentiu): This logic is highly tied to the key's variable
+           sized format. This should be refactored to be embedded within
+           unique's walk method.
+         */
+        if (field->maybe_null())
+        {
+          is_null= !*key;
+          key= key + 1;
+        }
+        key= field->unpack(field->ptr, key, key_end);
+        res= get_str_from_field(arg_item, field, &tmp, field->ptr, is_null);
+      }
+      else
+      {
+        bool is_null= false;
+        /*
+           Group concat always skips nulls.
+           TODO(cvicentiu) This should be handled as part of the "walk" step.
+        */
+        if (sum_func() == GROUP_CONCAT_FUNC)
+          is_null= false;
+        else
+        {
+          /*
+             This function is only usable for these two sum functions
+             as it's highly coupled to their internal implementation.
+          */
+          DBUG_ASSERT(sum_func() == JSON_ARRAYAGG_FUNC);
+          is_null= field->is_null_in_record(key);
+        }
+
+        uint offset= field->offset(field->table->record[0]) -
+          field->table->s->null_bytes;
+        res= get_str_from_field(arg_item, field, &tmp,
+                                key + offset + get_null_bytes(), is_null);
+      }
     }
 
     if (res)
-      result->append(*res);
+      result.append(*res);
   }
 
-  if (item->limit_clause)
-    (*row_limit)--;
-  item->row_count++;
+  if (limit_clause)
+    copy_row_limit--;
+  row_count++;
 
   /* stop if length of result more than max_length */
-  if (result->length() > max_length)
+  if (result.length() > max_length)
   {
     THD *thd= current_thd;
-    item->cut_max_length(result, old_length, max_length);
-    item->warning_for_row= TRUE;
-    report_cut_value_error(thd, item->row_count, item->func_name());
+    cut_max_length(&result, old_length, max_length);
+    warning_for_row= TRUE;
+    report_cut_value_error(thd, row_count, func_name());
 
     /**
        To avoid duplicated warnings in Item_func_group_concat::val_str()
@@ -3876,122 +3905,29 @@ int Item_func_group_concat::dump_leaf_key(void* key_arg,
 }
 
 
+
+
 /**
-  Append data from current leaf of variable size to item->result.
+  Append data from current leaf to item->result.
 */
-int
-Item_func_group_concat::dump_leaf_variable_sized_key(
-  void *key_arg,
-  element_count __attribute__((unused)),
-  void *item_arg)
+
+int Item_func_group_concat::dump_leaf_key(void* key_arg,
+                                          element_count count __attribute__((unused)),
+                                          void* item_arg)
 {
   Item_func_group_concat *item= (Item_func_group_concat *) item_arg;
-  TABLE *table= item->table;
-  uint max_length= (uint)table->in_use->variables.group_concat_max_len;
-  String tmp((char *)table->record[1], table->s->reclength,
-             default_charset_info);
-  String tmp2;
+  return item->dump_leaf_key_impl((const uchar *)key_arg, false);
+}
 
-  const uchar *key= (const uchar *) key_arg;
-  const uchar *key_end= NULL;
-  String *result= &item->result;
 
-  Item **arg= item->args, **arg_end= item->args + item->arg_count_field;
+int Item_func_group_concat::dump_leaf_key_distinct(void *key_arg,
+                                                   element_count count __attribute__((unused)),
+                                                   void *item_arg)
+{
+  Item_func_group_concat *item= (Item_func_group_concat *) item_arg;
+  return item->dump_leaf_key_impl((const uchar *)key_arg,
+                                  item->unique_filter->is_variable_sized());
 
-  uint old_length= result->length();
-
-  key_end= key + item->unique_filter->get_full_size();
-  key+= Variable_size_keys_descriptor::SIZE_OF_LENGTH_FIELD;
-
-  ulonglong *offset_limit= &item->copy_offset_limit;
-  ulonglong *row_limit = &item->copy_row_limit;
-  if (item->limit_clause && !(*row_limit))
-  {
-    item->result_finalized= true;
-    return 1;
-  }
-
-  tmp.length(0);
-
-  if (item->limit_clause && (*offset_limit))
-  {
-    item->row_count++;
-    (*offset_limit)--;
-    return 0;
-  }
-
-  if (!item->result_finalized)
-    item->result_finalized= true;
-  else
-    result->append(*item->separator);
-
-  for (; arg < arg_end; arg++)
-  {
-    String *res= nullptr;
-    /*
-      We have to use get_tmp_table_field() instead of
-      real_item()->get_tmp_table_field() because we want the field in
-      the temporary table, not the original field
-      We also can't use table->field array to access the fields
-      because it contains both order and arg list fields.
-     */
-    if ((*arg)->const_item())
-      res= item->get_str_from_item(*arg, &tmp);
-    else
-    {
-      const uchar *next_key;
-      Field *field= (*arg)->get_tmp_table_field();
-      DBUG_ASSERT(field);
-      if (field->maybe_null())
-      {
-        if (*key == 0)
-        {
-          // Case with NULL value
-          field->set_null();
-          next_key= key + 1;
-        }
-        else
-        {
-          // Case with NOT NULL value
-          field->set_notnull();
-          next_key= field->unpack(field->ptr, key+1, key_end, 0);
-        }
-      }
-      else
-      {
-        next_key= field->unpack(field->ptr, key, key_end, 0);
-      }
-      const uchar *record= field->table->record[0];
-      size_t offset = field->offset(field->table->record[0]);
-
-      res= item->get_str_from_field(*arg, field, &tmp, record, offset);
-      key= next_key;
-    }
-
-    if (res)
-      result->append(*res);
-  }
-
-  if (item->limit_clause)
-    (*row_limit)--;
-  item->row_count++;
-
-  /* stop if length of result more than max_length */
-  if (result->length() > max_length)
-  {
-    THD *thd= current_thd;
-    item->cut_max_length(result, old_length, max_length);
-    item->warning_for_row= TRUE;
-    report_cut_value_error(thd, item->row_count, item->func_name());
-
-    /**
-       To avoid duplicated warnings in Item_func_group_concat::val_str()
-    */
-    if (table && table->blob_storage)
-      table->blob_storage->set_truncated_value(false);
-    return 1;
-  }
-  return 0;
 }
 
 
@@ -4589,10 +4525,7 @@ String* Item_func_group_concat::val_str(String* str)
     if (tree != NULL) // order by
       tree_walk(tree, &dump_leaf_key, this, left_root_right);
     else if (distinct) // distinct (and no order by).
-      unique_filter->walk(table,
-                          unique_filter->is_variable_sized() ?
-                          dump_leaf_variable_sized_key :
-                          dump_leaf_key, this);
+      unique_filter->walk(table, dump_leaf_key_distinct, this);
     else if (row_limit && copy_row_limit == (ulonglong)row_limit->val_int())
       return &result;
     else

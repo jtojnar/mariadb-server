@@ -2004,10 +2004,14 @@ protected:
   bool repack_tree(THD *thd);
 
   virtual String *get_str_from_item(Item *i, String *tmp)
-    { return i->val_str(tmp); }
+  { return i->val_str(tmp); }
   virtual String *get_str_from_field(Item *i, Field *f, String *tmp,
-                                     const uchar *key, size_t offset)
-    { return f->val_str(tmp, key + offset); }
+                                     const uchar *key, bool is_null)
+  {
+    // We do not store null values for GROUP_CONCAT.
+    DBUG_ASSERT(!is_null);
+    return f->val_str(tmp, key);
+  }
 
   virtual void cut_max_length(String *result,
                               uint old_length, uint max_length) const;
@@ -2093,12 +2097,6 @@ public:
   { return group_concat_key_cmp_with_order; }
   bool is_distinct_packed();
   bool is_packing_allowed(uint* total_length);
-  static int dump_leaf_key(void* key_arg,
-                           element_count count __attribute__((unused)),
-                           void* item_arg);
-  static int dump_leaf_variable_sized_key(void *key_arg,
-                                          element_count __attribute__((unused)),
-                                          void *item_arg);
   virtual int insert_record_to_unique(bool exclude_nulls);
   Keys_descriptor *get_keys_descriptor(uint size_arg,
                                        bool allow_packing) const override;
@@ -2116,6 +2114,14 @@ protected:
   { return 0; }
   virtual uchar* get_record_pointer() const
   { return table->record[0] + table->s->null_bytes; }
+
+  int dump_leaf_key_impl(const uchar* key_arg, bool is_variable_sized);
+  static int dump_leaf_key(void* key_arg,
+                           element_count count __attribute__((unused)),
+                           void* item_arg);
+  static int dump_leaf_key_distinct(void *key_arg,
+                                    element_count count __attribute__((unused)),
+                                    void* item_arg);
 };
 
 #endif /* ITEM_SUM_INCLUDED */
