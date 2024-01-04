@@ -415,7 +415,7 @@ Datafile::validate_for_recovery()
 	case DB_TABLESPACE_EXISTS:
 		break;
 	case DB_SUCCESS:
-		if (!m_defer || !m_space_id) {
+		if (!m_defer) {
 			break;
 		}
 		/* InnoDB should check whether the deferred
@@ -435,9 +435,19 @@ Datafile::validate_for_recovery()
 			return(err);
 		}
 
+		if (!m_space_id) {
+			m_space_id = recv_sys.dblwr.find_first_page(
+				m_filepath, m_handle);
+			if (m_space_id) {
+				m_defer= false;
+				goto free_first_page;
+			} else return err;
+		}
+
 		if (!m_defer) {
 			err = find_space_id();
 			if (err != DB_SUCCESS || m_space_id == 0) {
+
 				ib::error() << "Datafile '" << m_filepath
 					<< "' is corrupted. Cannot determine "
 					"the space ID from the first 64 pages.";
@@ -454,6 +464,7 @@ Datafile::validate_for_recovery()
 			return m_defer ? err : DB_CORRUPTION;
 		}
 
+free_first_page:
 		/* Free the previously read first page and then re-validate. */
 		free_first_page();
 		m_defer = false;
@@ -492,7 +503,7 @@ err_exit:
 			return DB_SUCCESS;
 		}
 
-		ib::info() << error_txt << " in datafile: " << m_filepath
+		ib::error() << error_txt << " in datafile: " << m_filepath
 			<< ", Space ID:" << m_space_id  << ", Flags: "
 			<< m_flags;
 		m_is_valid = false;

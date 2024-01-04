@@ -33,5 +33,26 @@ f1	f2
 3	////////////
 4	------------
 5	............
+connect  dml,localhost,root,,;
+XA START 'x';
+insert into t1 values (6, repeat('%', @@innodb_page_size/2));
+XA END 'x';
+XA PREPARE 'x';
+disconnect dml;
+connection default;
+flush table t1 for export;
+# restart
+FOUND 2 /InnoDB: Restoring page \[page id: space=[1-9][0-9]*, page number=0\] of datafile/ in mysqld.1.err
+XA ROLLBACK 'x';
+check table t1;
+Table	Op	Msg_type	Msg_text
+test.t1	check	status	OK
+select f1, f2 from t1;
+f1	f2
+1	############
+2	++++++++++++
+3	////////////
+4	------------
+5	............
 drop table t1;
 # End of 10.5 tests

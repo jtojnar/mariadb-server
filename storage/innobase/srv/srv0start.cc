@@ -1306,6 +1306,10 @@ dberr_t srv_start(bool create_new_db)
 		ut_ad(buf_page_cleaner_is_active);
 	}
 
+	if (innodb_encrypt_temporary_tables && !log_crypt_init()) {
+		return srv_init_abort(DB_ERROR);
+	}
+
 	/* Check if undo tablespaces and redo log files exist before creating
 	a new system tablespace */
 	if (create_new_db) {
@@ -1314,6 +1318,11 @@ dberr_t srv_start(bool create_new_db)
 			return(srv_init_abort(DB_ERROR));
 		}
 		recv_sys.debug_free();
+	} else {
+		err = recv_recovery_read_checkpoint();
+		if (err != DB_SUCCESS) {
+			return srv_init_abort(err);
+		}
 	}
 
 	/* Open or create the data files. */
@@ -1340,10 +1349,6 @@ dberr_t srv_start(bool create_new_db)
 	default:
 		/* Other errors might come from Datafile::validate_first_page() */
 		return(srv_init_abort(err));
-	}
-
-	if (innodb_encrypt_temporary_tables && !log_crypt_init()) {
-		return srv_init_abort(DB_ERROR);
 	}
 
 	if (create_new_db) {
