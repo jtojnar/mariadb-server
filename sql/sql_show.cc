@@ -7798,6 +7798,12 @@ int get_schema_key_period_usage_record(THD *thd, TABLE_LIST *tables,
   if (!period_name)
     return 0;
 
+#ifndef NO_EMBEDDED_ACCESS_CHECKS
+  check_grant(thd, TABLE_ACLS, tables, 1, 1, 1);
+  if ((tables->grant.all_privilege() & ~SELECT_ACL & TABLE_ACLS) == NO_ACL)
+    return 0;
+#endif
+
   bool err= false;
   for (uint k= 0; !err && k < keys_total; k++)
   {

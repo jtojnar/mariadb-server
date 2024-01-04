@@ -56,7 +56,6 @@ def	test	t1	mytime	s	NULL
 def	test	t2	SYSTEM_TIME	vs	ve
 def	test	t2	mytime	s	e
 connection default;
-drop user periods_hidden@localhost;
 drop tables t1, t2;
 # MDEV-32503 Queries from KEY_PERIOD_USAGE don't obey case-sensitivity
 create table t (a int, b date, c date, period for app(b,c),
@@ -75,7 +74,36 @@ table_name
 # does not work
 select constraint_name from information_schema.key_period_usage where table_name = 't';
 constraint_name
-PRIMARY
 select constraint_name from information_schema.key_period_usage where constraint_name = 'idx';
 constraint_name
 drop table t;
+# MDEV-32501 KEY_PERIOD_USAGE reveals information to unprivileged user
+create table t (a int, b date, c date, f int, period for app(b, c),
+primary key(a, app without overlaps));
+grant select (f) on t to periods_hidden@localhost;
+connection chopped;
+select period_name from information_schema.key_period_usage where table_name = 't';
+period_name
+connection default;
+grant update (f) on t to periods_hidden@localhost;
+connection chopped;
+select 'can be seen', constraint_name, period_name from information_schema.key_period_usage where table_name = 't';
+can be seen	constraint_name	period_name
+can be seen	PRIMARY	app
+connection default;
+revoke update (f) on t from periods_hidden@localhost;
+connection chopped;
+update t set f = 1;
+ERROR 42000: UPDATE command denied to user 'periods_hidden'@'localhost' for table `test`.`t`
+select period_name from information_schema.key_period_usage where table_name = 't';
+period_name
+connection default;
+grant alter on t to periods_hidden@localhost;
+connection chopped;
+select 'can be seen', constraint_name, period_name from information_schema.key_period_usage where table_name = 't';
+can be seen	constraint_name	period_name
+connection default;
+drop table t;
+disconnect chopped;
+connection default;
+drop user periods_hidden@localhost;
