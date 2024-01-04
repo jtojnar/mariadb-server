@@ -454,11 +454,18 @@ void seek_io_cache(IO_CACHE *cache, my_off_t needed_offset)
 }
 
 
-/*
+/**
   Use this to reset cache to re-start reading or to change the type
   between READ_CACHE <-> WRITE_CACHE
   If we are doing a reinit of a cache where we have the start of the file
   in the cache, we are reusing this memory without flushing it to disk.
+
+  @param info          IO_CACHE
+  @param type          READ_CACHE or WRITE_CACHE
+  @param seek_offset   Where to start reading or writing
+  @param use_async_io  Not used
+  @param clear_cache   0  No clear, keep all information
+                       1  truncate file. seek_offset has to be 0.
 */
 
 my_bool reinit_io_cache(IO_CACHE *info, enum cache_type type,
@@ -525,8 +532,24 @@ my_bool reinit_io_cache(IO_CACHE *info, enum cache_type type,
       }
     }
     /* flush cache if we want to reuse it */
-    if (!clear_cache && my_b_flush_io_cache(info,1))
-      DBUG_RETURN(1);
+    if (!clear_cache && info->type == WRITE_CACHE)
+    {
+      int ret;
+      myf save_flags;
+      if (type == WRITE_CACHE && seek_offset > info->pos_in_file)
+      {
+        /* Write only up to where we will start next write */
+        my_off_t buffer_used= seek_offset - info->pos_in_file;
+        info->write_pos= info->write_buffer + buffer_used;
+      }
+      save_flags= info->myflags;
+      /* Allow temporary space over usage. Will be detected on next write */
+      info->myflags&= ~MY_TRACK_WITH_LIMIT;
+      ret= my_b_flush_io_cache(info,1);
+      info->myflags= save_flags;
+      if (ret)
+        DBUG_RETURN(ret);
+    }
     info->pos_in_file=seek_offset;
     /* Better to do always do a seek */
     info->seek_not_done=1;

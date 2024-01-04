@@ -95,7 +95,8 @@ public:
   {
     bool cache_was_empty= empty();
     bool truncate_file= (cache_log.file != -1 &&
-                         my_b_write_tell(&cache_log) > CACHE_FILE_TRUNC_SIZE);
+                         my_b_write_tell(&cache_log) >
+                         MY_MIN(CACHE_FILE_TRUNC_SIZE, binlog_stmt_cache_size));
     truncate(0,1);                              // Forget what's in cache
     checksum_opt= !precompute_checksums ? BINLOG_CHECKSUM_ALG_OFF :
       (enum_binlog_checksum_alg)binlog_checksum_options;

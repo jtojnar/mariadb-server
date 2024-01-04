@@ -5808,9 +5808,11 @@ static binlog_cache_mngr *binlog_setup_cache_mngr(THD *thd)
                                                    MYF(MY_ZEROFILL));
   if (!cache_mngr ||
       open_cached_file(&cache_mngr->stmt_cache.cache_log, mysql_tmpdir,
-                       LOG_PREFIX, (size_t)binlog_stmt_cache_size, MYF(MY_WME)) ||
+                       LOG_PREFIX, (size_t)binlog_stmt_cache_size,
+                       MYF(MY_WME | MY_TRACK | MY_TRACK_WITH_LIMIT)) ||
       open_cached_file(&cache_mngr->trx_cache.cache_log, mysql_tmpdir,
-                       LOG_PREFIX, (size_t)binlog_cache_size, MYF(MY_WME)))
+                       LOG_PREFIX, (size_t)binlog_cache_size,
+                       MYF(MY_WME | MY_TRACK | MY_TRACK_WITH_LIMIT)))
   {
     my_free(cache_mngr);
     return NULL;
@@ -5961,7 +5963,8 @@ THD::binlog_start_trans_and_stmt()
         // Replicated events in writeset doesn't have checksum
       Log_event_writer writer(&tmp_io_cache, 0, BINLOG_CHECKSUM_ALG_OFF, NULL);
       if(!open_cached_file(&tmp_io_cache, mysql_tmpdir, TEMP_PREFIX,
-                          128, MYF(MY_WME)))
+                          128,
+                           MYF(MY_WME | MY_TRACK | MY_TRACK_WITH_LIMIT)))
       {
         uint64 seqno= this->variables.gtid_seq_no;
         uint32 domain_id= this->variables.gtid_domain_id;
@@ -7462,6 +7465,11 @@ int Event_log::write_cache_raw(THD *thd, IO_CACHE *cache)
 
   IO_CACHE *file= get_log_file();
   IF_DBUG(size_t total= cache->end_of_file,);
+
+  /*
+    Note that for the first loop there is nothing to write if
+    the full file fits into the cache.
+  */
   do
   {
     size_t read_len= cache->read_end - cache->read_pos;
