@@ -1968,6 +1968,12 @@ static bool log_checkpoint_low(lsn_t oldest_lsn, lsn_t end_lsn)
   }
 
   log_sys.next_checkpoint_lsn= oldest_lsn;
+  DBUG_EXECUTE_IF("ib_log_checkpoint_avoid_hard",
+       ib::info() << "Checkpoint added: old "
+                  << log_sys.last_checkpoint_lsn
+                 << " New one " << log_sys.next_checkpoint_lsn;
+       ut_ad(0);
+   );
   log_sys.write_checkpoint(end_lsn);
 
   return true;
